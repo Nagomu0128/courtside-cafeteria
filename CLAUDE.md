@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Cafeteria Management System
 
-> **Last Updated:** 2025-11-16
+> **Last Updated:** 2025-11-17
 > **Project:** Cafeteria Management System
 > **Status:** Initial Development Phase
 
@@ -50,6 +50,8 @@
 - ✅ Base Next.js 16 template initialized
 - ✅ TypeScript configuration complete
 - ✅ Tailwind CSS v4 integrated
+- ✅ shadcn/ui component library ready for use
+- ✅ Prettier code formatter configured
 - ✅ ESLint configured with Next.js rules
 - 🚧 DDD directory structure to be implemented
 - 🚧 Application features pending implementation
@@ -65,12 +67,14 @@
 
 ### Styling
 - **Tailwind CSS v4** - Utility-first CSS framework (latest version)
+- **shadcn/ui** - Re-usable components built with Radix UI and Tailwind CSS
 - **PostCSS** - CSS processing with Tailwind plugin
 - **Geist Font Family** - Vercel's optimized font (sans & mono)
 
 ### Development Tools
 - **ESLint 9.x** - Linting with flat config format
 - **Next.js ESLint Config** - Core Web Vitals rules
+- **Prettier** - Opinionated code formatter for consistent code style
 - **TypeScript Compiler** - Type checking (noEmit mode)
 
 ### Key Dependencies
@@ -508,13 +512,15 @@ cafeteria-mg/
 │   │   └── menu/
 │   │       └── route.ts
 │   ├── components/              # Presentation Components
+│   │   ├── ui/                  # shadcn/ui components (auto-generated)
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   └── dialog.tsx
 │   │   ├── features/            # Feature-specific components
 │   │   │   ├── orders/
 │   │   │   └── menu/
-│   │   ├── shared/              # Shared UI components
-│   │   │   ├── Button.tsx
-│   │   │   ├── Card.tsx
-│   │   │   └── Modal.tsx
+│   │   ├── shared/              # Shared custom components
+│   │   │   └── CustomComponent.tsx
 │   │   └── layouts/             # Layout components
 │   ├── layout.tsx               # Root layout
 │   ├── page.tsx                 # Home page
@@ -618,6 +624,7 @@ npm run dev
 | `npm run build` | Create production build | Before deployment, testing |
 | `npm run start` | Start production server | After build, production testing |
 | `npm run lint` | Run ESLint checks | Before commits, CI/CD |
+| `npm run lint:fix` | Fix ESLint errors and format code with Prettier | Before commits, code cleanup |
 
 ### Git Workflow
 
@@ -865,7 +872,21 @@ app/
 
 **Component Organization:**
 
-1. **Feature Components** - Organize by Bounded Context
+1. **shadcn/ui Components** - Auto-generated UI primitives
+   ```
+   app/components/ui/
+   ├── button.tsx          # Button component with variants
+   ├── card.tsx            # Card component with sub-components
+   ├── dialog.tsx          # Dialog/Modal component
+   ├── input.tsx           # Input component
+   └── ...                 # Other shadcn/ui components
+   ```
+   - Generated via `npx shadcn@latest add <component>`
+   - Built with Radix UI and Tailwind CSS
+   - Fully customizable and type-safe
+   - Follow lowercase naming convention (shadcn/ui standard)
+
+2. **Feature Components** - Organize by Bounded Context
    ```
    app/components/features/orders/
    ├── OrderCard.tsx
@@ -873,15 +894,16 @@ app/
    └── OrderList.tsx
    ```
 
-2. **Shared Components** - Reusable UI components
+3. **Shared Custom Components** - Reusable custom components
    ```
    app/components/shared/
-   ├── Button.tsx
-   ├── Card.tsx
-   └── Input.tsx
+   ├── CustomComponent.tsx
+   └── AnotherComponent.tsx
    ```
+   - For custom components not from shadcn/ui
+   - Build on top of shadcn/ui components when possible
 
-3. **Route-Specific Components** - Co-locate with route
+4. **Route-Specific Components** - Co-locate with route
    ```
    app/(dashboard)/orders/
    ├── page.tsx
@@ -1090,9 +1112,24 @@ import { Order } from "@/domain/cafeteria/entities/Order";
 
 1. **DRY Principle** - Don't Repeat Yourself
 2. **KISS Principle** - Keep It Simple, Stupid
-3. **Consistent Formatting** - Let ESLint handle it
+3. **Consistent Formatting** - Let Prettier and ESLint handle it
 4. **Clear Naming** - Use descriptive, unambiguous names
 5. **Comments** - Explain "why", not "what"
+
+### Prettier Standards
+
+✅ **DO:**
+- Run Prettier before committing code
+- Use `npm run lint:fix` to auto-fix linting issues and format all files
+- Follow Prettier's default configuration (no custom overrides unless necessary)
+- Let Prettier handle code formatting (indentation, line breaks, quotes, etc.)
+- Integrate Prettier with your IDE for format-on-save
+
+❌ **DON'T:**
+- Manually format code when Prettier can handle it
+- Commit unformatted code
+- Disable Prettier rules without team discussion
+- Mix formatted and unformatted code in the same PR
 
 ---
 
@@ -1173,6 +1210,51 @@ export default function DashboardLayout({
   );
 }
 ```
+
+### shadcn/ui Component Pattern
+
+**shadcn/ui** components are located in `app/components/ui/` and are built with Radix UI primitives and Tailwind CSS.
+
+**Adding a shadcn/ui component:**
+```bash
+# Add a specific component (e.g., button)
+npx shadcn@latest add button
+
+# Add multiple components
+npx shadcn@latest add button card dialog
+```
+
+**Using shadcn/ui components:**
+```typescript
+// app/components/features/orders/OrderCard.tsx
+import { Button } from "@/app/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card";
+
+export default function OrderCard({ order }: { order: Order }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{order.title}</CardTitle>
+        <CardDescription>{order.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Total: ${order.total}</p>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={() => handleOrder(order.id)}>
+          Place Order
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+```
+
+**Customizing shadcn/ui components:**
+- Components are copied to your project, so you can modify them directly
+- Maintain consistent styling with Tailwind CSS
+- Components are fully type-safe with TypeScript
+- Follow DDD principles: use in Presentation layer only
 
 ---
 
@@ -1342,6 +1424,47 @@ export async function generateMetadata({ params }): Promise<Metadata> {
   };
 }
 ```
+
+### Adding shadcn/ui Components
+
+1. **Install a component:**
+   ```bash
+   npx shadcn@latest add button
+   ```
+
+2. **Use the component:**
+   ```typescript
+   import { Button } from "@/app/components/ui/button";
+
+   <Button variant="default">Click me</Button>
+   <Button variant="destructive">Delete</Button>
+   <Button variant="outline">Cancel</Button>
+   ```
+
+3. **Available variants and sizes:**
+   - Variants: `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`
+   - Sizes: `default`, `sm`, `lg`, `icon`
+
+4. **Customize in `app/components/ui/button.tsx`** if needed
+
+### Formatting Code with Prettier
+
+1. **Fix linting issues and format all files:**
+   ```bash
+   npm run lint:fix
+   ```
+   This command runs ESLint with `--fix` flag and formats code with Prettier.
+
+2. **Format specific file or directory manually:**
+   ```bash
+   npx prettier --write app/components/Button.tsx
+   npx prettier --write "app/**/*.{ts,tsx}"
+   ```
+
+3. **IDE Integration:**
+   - Install Prettier extension for your IDE
+   - Enable "Format on Save" in settings
+   - Prettier will auto-format on file save
 
 ---
 
@@ -1620,6 +1743,8 @@ When reviewing generated code, ask:
 - [React 19 Docs](https://react.dev)
 - [TypeScript Docs](https://www.typescriptlang.org/docs/)
 - [Tailwind CSS v4 Docs](https://tailwindcss.com/docs)
+- [shadcn/ui Docs](https://ui.shadcn.com/) - Component library and documentation
+- [Prettier Docs](https://prettier.io/docs/en/) - Code formatter documentation
 
 ### Domain-Driven Design Resources
 
@@ -1676,15 +1801,27 @@ npm update
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-11-17
 **Maintained By:** AI Assistants working on cafeteria-mg
-**Version:** 2.0.0 - DDD Architecture Added
+**Version:** 2.1.0 - Prettier and shadcn/ui Added
 
 ---
 
 *This document should be updated whenever significant architectural decisions are made or new patterns are established.*
 
 ## 📋 Document Changelog
+
+### Version 2.1.0 (2025-11-17)
+- ✅ Added **Prettier** code formatter to Tech Stack
+- ✅ Added **shadcn/ui** component library to Tech Stack
+- ✅ Updated Available Scripts with `npm run lint:fix` command (combines ESLint fix + Prettier)
+- ✅ Added Prettier Standards section to Coding Standards
+- ✅ Added shadcn/ui Component Pattern section
+- ✅ Updated Component Organization to include `app/components/ui/` directory
+- ✅ Added Common Tasks for shadcn/ui components and Prettier formatting
+- ✅ Updated Codebase Structure to reflect shadcn/ui component directory
+- ✅ Added shadcn/ui and Prettier documentation links to Additional Resources
+- ✅ Updated Current Status to reflect new tooling
 
 ### Version 2.0.0 (2025-11-16)
 - ✅ Added comprehensive Domain-Driven Design (DDD) architecture section
