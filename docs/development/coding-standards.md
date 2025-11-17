@@ -1,6 +1,6 @@
 # Coding Standards
 
-> **Version:** 1.0.0
+> **Version:** 2.0.0
 > **Last Updated:** 2025-11-17
 
 ---
@@ -22,11 +22,17 @@
 
 **All code must follow DDD principles and layered architecture rules.**
 
-This document defines coding standards for the Cafeteria Management System project. These standards ensure consistency, maintainability, and adherence to DDD principles.
+This document defines coding standards for Next.js development in the Cafeteria Management System project.
+
+**📖 For DDD architecture details, see:** [`specs/01-architecture.md`](../../specs/01-architecture.md)
 
 ---
 
 ## DDD Architecture Standards
+
+**⚠️ For complete DDD architecture specifications, see [`specs/01-architecture.md`](../../specs/01-architecture.md)**
+
+This section provides Next.js-specific DDD implementation guidelines. For foundational DDD concepts and project architecture, refer to the specs.
 
 ### Mandatory DDD Rules
 

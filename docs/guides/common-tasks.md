@@ -1,7 +1,13 @@
 # Common Development Tasks
 
-> **Version:** 1.0.0
+> **Version:** 2.0.0
 > **Last Updated:** 2025-11-17
+
+---
+
+**📖 Prerequisites:**
+- Read [`specs/01-architecture.md`](../../specs/01-architecture.md) for DDD architecture overview
+- Read [`specs/02-domain-model.md`](../../specs/02-domain-model.md) for domain model examples
 
 ---
 

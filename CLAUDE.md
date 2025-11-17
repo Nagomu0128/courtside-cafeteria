@@ -8,8 +8,12 @@
 
 ## 📋 Quick Navigation
 
-- **Architecture Details**: [`docs/architecture/ddd-guide.md`](docs/architecture/ddd-guide.md)
-- **Layer Rules**: [`docs/architecture/layer-rules.md`](docs/architecture/layer-rules.md)
+### Project Specifications
+- **Project Specs Index**: [`specs/README.md`](specs/README.md) - Complete project specifications
+- **Architecture & DDD**: [`specs/01-architecture.md`](specs/01-architecture.md) - DDD principles, layers, error handling
+- **Domain Model**: [`specs/02-domain-model.md`](specs/02-domain-model.md) - Entities, Value Objects, business logic
+
+### Development Guides
 - **Coding Standards**: [`docs/development/coding-standards.md`](docs/development/coding-standards.md)
 - **Component Patterns**: [`docs/development/component-patterns.md`](docs/development/component-patterns.md)
 - **Common Tasks**: [`docs/guides/common-tasks.md`](docs/guides/common-tasks.md)
@@ -90,7 +94,7 @@ Infrastructure → Application → Domain
 - ❌ Direct database access from Application
 - ❌ Violating layer dependencies
 
-**📖 Full DDD Guide**: [`docs/architecture/ddd-guide.md`](docs/architecture/ddd-guide.md)
+**📖 Full Architecture Guide**: [`specs/01-architecture.md`](specs/01-architecture.md)
 
 ---
 
@@ -125,14 +129,14 @@ cafeteria-mg/
 │   ├── layout.tsx
 │   ├── page.tsx
 │   └── globals.css
-├── docs/                          # Documentation (NEW)
-│   ├── architecture/              # DDD architecture docs
-│   ├── development/               # Development guides
-│   └── guides/                    # Task & troubleshooting guides
+├── docs/                          # Development guides
+│   ├── development/               # Next.js patterns & standards
+│   └── guides/                    # Common tasks
+├── specs/                         # Project specifications (DDD architecture, domain model, etc.)
 └── public/                        # Static assets
 ```
 
-**📖 Detailed Structure**: [`docs/architecture/layer-rules.md`](docs/architecture/layer-rules.md)
+**📖 Detailed Specifications**: [`specs/README.md`](specs/README.md)
 
 ---
 
@@ -407,18 +411,23 @@ Before generating code, verify:
 
 ## 📋 Documentation Changelog
 
+### Version 3.1.0 (2025-11-17)
+- ✅ **ELIMINATED DUPLICATION** - Removed overlapping content between `specs/` and `docs/`
+- ✅ **CONSOLIDATED** - Architecture and DDD details now in `specs/` only
+- ✅ **REMOVED** `docs/architecture/` (duplicate of `specs/01-architecture.md`)
+- ✅ **UPDATED** CLAUDE.md to reference `specs/` for project specifications
+- ✅ **OPTIMIZED** context - Reduced redundancy for better AI performance
+- ✅ **CLARIFIED** structure:
+  - `specs/` → Project-specific specifications (architecture, domain model, etc.)
+  - `docs/development/` → Next.js patterns and coding standards
+  - `docs/guides/` → Common development tasks
+
 ### Version 3.0.0 (2025-11-17)
 - ✅ **RESTRUCTURED** - Split documentation into modular files
-- ✅ **REDUCED** main CLAUDE.md to ~500 lines (Quick Reference)
+- ✅ **REDUCED** main CLAUDE.md to ~440 lines (Quick Reference)
 - ✅ **CREATED** `/docs` directory structure
-- ✅ **SEPARATED** detailed guides:
-  - `docs/architecture/ddd-guide.md` - DDD principles and patterns
-  - `docs/architecture/layer-rules.md` - Layer rules and file organization
-  - `docs/development/coding-standards.md` - Detailed coding standards
-  - `docs/development/component-patterns.md` - Component patterns and examples
-  - `docs/guides/common-tasks.md` - Common development tasks
+- ✅ **SEPARATED** detailed guides into focused documents
 - ✅ **IMPROVED** navigation with quick links
-- ✅ **OPTIMIZED** for AI context management (load only what's needed)
 
 ### Version 2.1.0 (2025-11-17)
 - Added Prettier and shadcn/ui to tech stack
@@ -433,8 +442,8 @@ Before generating code, verify:
 
 **Last Updated:** 2025-11-17
 **Maintained By:** AI Assistants working on cafeteria-mg
-**Version:** 3.0.0 - Restructured Documentation
+**Version:** 3.1.0 - Consolidated Documentation
 
 ---
 
-*For detailed information, refer to the individual documentation files in the `/docs` directory.*
+*For project specifications, see [`specs/`](specs/). For development guides, see [`docs/`](docs/).*

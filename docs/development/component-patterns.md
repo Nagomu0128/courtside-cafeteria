@@ -1,6 +1,6 @@
 # Component Patterns
 
-> **Version:** 1.0.0
+> **Version:** 2.0.0
 > **Last Updated:** 2025-11-17
 
 ---
@@ -20,7 +20,11 @@
 
 ## Overview
 
-This guide provides patterns for creating components in the Cafeteria Management System, following Next.js 16 App Router conventions and DDD principles.
+This guide provides Next.js 16 component patterns for the Cafeteria Management System.
+
+**📖 For DDD architecture and domain model details, see:**
+- [`specs/01-architecture.md`](../../specs/01-architecture.md) - Architecture overview
+- [`specs/02-domain-model.md`](../../specs/02-domain-model.md) - Domain entities and value objects
 
 ### Key Principles
 
