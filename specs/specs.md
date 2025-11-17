@@ -25,10 +25,39 @@
     "neverthrow": "^6.0.0",
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.0.0",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0",
+    "lucide-react": "^0.344.0",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-checkbox": "^1.0.4",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-toast": "^1.1.5",
+    "@radix-ui/react-tabs": "^1.0.4"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.5.11",
+    "@ianvs/prettier-plugin-sort-imports": "^4.1.1"
   }
 }
 ```
+
+**UI Component Library:**
+- **shadcn/ui**: Tailwind CSSベースの再利用可能なコンポーネントライブラリ
+  - Radix UIプリミティブを使用した高品質なアクセシブルコンポーネント
+  - class-variance-authority (CVA)によるバリアント管理
+  - tailwind-mergeで競合するTailwindクラスを適切にマージ
+  - lucide-reactアイコンライブラリ
+
+**Code Formatting:**
+- **Prettier**: コードフォーマッター（統一されたコードスタイル）
+  - prettier-plugin-tailwindcss: Tailwindクラスの自動ソート
+  - @ianvs/prettier-plugin-sort-imports: import文の自動ソート
 
 ## 2. エラー型の定義
 
