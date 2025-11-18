@@ -424,6 +424,7 @@ Before generating code, verify:
 ## 📋 Documentation Changelog
 
 ### Version 3.2.0 (2025-11-17)
+
 - ✅ **ADDED** - Frontend guidelines: All UI must be written in React
 - ✅ **ADDED** - UI Implementation Guidelines section with Figma MCP usage
 - ✅ **UPDATED** - AI Assistant guidelines to include Figma MCP for design reference
