@@ -9,11 +9,13 @@
 ## 📋 Quick Navigation
 
 ### Project Specifications
+
 - **Project Specs Index**: [`specs/README.md`](specs/README.md) - Complete project specifications
 - **Architecture & DDD**: [`specs/01-architecture.md`](specs/01-architecture.md) - DDD principles, layers, error handling
 - **Domain Model**: [`specs/02-domain-model.md`](specs/02-domain-model.md) - Entities, Value Objects, business logic
 
 ### Development Guides
+
 - **Coding Standards**: [`docs/development/coding-standards.md`](docs/development/coding-standards.md)
 - **Component Patterns**: [`docs/development/component-patterns.md`](docs/development/component-patterns.md)
 - **Common Tasks**: [`docs/guides/common-tasks.md`](docs/guides/common-tasks.md)
@@ -25,6 +27,7 @@
 **Cafeteria Management System** - A modern web application for managing cafeteria operations, built with **Next.js 16** and **strict Domain-Driven Design (DDD)** architecture.
 
 ### Current Status
+
 - ✅ Base Next.js 16 with TypeScript
 - ✅ Tailwind CSS v4 + shadcn/ui
 - ✅ Prettier + ESLint configured
@@ -142,15 +145,15 @@ cafeteria-mg/
 
 ## 🛠 Tech Stack (Core)
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 16.0.3 | React framework with App Router |
-| **React** | 19.2.0 | UI library |
-| **TypeScript** | 5.x | Type safety (strict mode) |
-| **Tailwind CSS** | v4 | Utility-first styling |
-| **shadcn/ui** | Latest | Component library (Radix UI + Tailwind) |
-| **Prettier** | Latest | Code formatter |
-| **ESLint** | 9.x | Linting (flat config) |
+| Technology       | Version | Purpose                                 |
+| ---------------- | ------- | --------------------------------------- |
+| **Next.js**      | 16.0.3  | React framework with App Router         |
+| **React**        | 19.2.0  | UI library                              |
+| **TypeScript**   | 5.x     | Type safety (strict mode)               |
+| **Tailwind CSS** | v4      | Utility-first styling                   |
+| **shadcn/ui**    | Latest  | Component library (Radix UI + Tailwind) |
+| **Prettier**     | Latest  | Code formatter                          |
+| **ESLint**       | 9.x     | Linting (flat config)                   |
 
 ---
 
@@ -158,25 +161,25 @@ cafeteria-mg/
 
 ### DDD Layer Rules
 
-| Layer | Can Import | Cannot Import | Rules |
-|-------|-----------|---------------|-------|
-| **Domain** | ❌ Nothing | ALL other layers | Pure business logic, framework-agnostic |
-| **Application** | ✅ Domain | Infrastructure, Presentation | Orchestration only, no business logic |
-| **Infrastructure** | ✅ Domain, Application | Presentation | Implements interfaces, all I/O operations |
-| **Presentation** | ✅ Application, Infrastructure | Domain directly | UI/API handling, delegates to Application |
+| Layer              | Can Import                     | Cannot Import                | Rules                                     |
+| ------------------ | ------------------------------ | ---------------------------- | ----------------------------------------- |
+| **Domain**         | ❌ Nothing                     | ALL other layers             | Pure business logic, framework-agnostic   |
+| **Application**    | ✅ Domain                      | Infrastructure, Presentation | Orchestration only, no business logic     |
+| **Infrastructure** | ✅ Domain, Application         | Presentation                 | Implements interfaces, all I/O operations |
+| **Presentation**   | ✅ Application, Infrastructure | Domain directly              | UI/API handling, delegates to Application |
 
 ### File Naming
 
-| File Type | Convention | Example |
-|-----------|-----------|---------|
-| Pages | `page.tsx` | `app/dashboard/page.tsx` |
-| Layouts | `layout.tsx` | `app/layout.tsx` |
-| Components | PascalCase | `OrderCard.tsx` |
-| Entities | PascalCase | `Order.ts`, `Menu.ts` |
-| Value Objects | PascalCase | `Price.ts`, `Email.ts` |
-| Use Cases | `<Verb><Entity>UseCase.ts` | `CreateOrderUseCase.ts` |
-| DTOs | `<Purpose>Dto.ts` | `CreateOrderDto.ts` |
-| Repository Interfaces | `I<Entity>Repository.ts` | `IOrderRepository.ts` |
+| File Type                  | Convention                    | Example                    |
+| -------------------------- | ----------------------------- | -------------------------- |
+| Pages                      | `page.tsx`                    | `app/dashboard/page.tsx`   |
+| Layouts                    | `layout.tsx`                  | `app/layout.tsx`           |
+| Components                 | PascalCase                    | `OrderCard.tsx`            |
+| Entities                   | PascalCase                    | `Order.ts`, `Menu.ts`      |
+| Value Objects              | PascalCase                    | `Price.ts`, `Email.ts`     |
+| Use Cases                  | `<Verb><Entity>UseCase.ts`    | `CreateOrderUseCase.ts`    |
+| DTOs                       | `<Purpose>Dto.ts`             | `CreateOrderDto.ts`        |
+| Repository Interfaces      | `I<Entity>Repository.ts`      | `IOrderRepository.ts`      |
 | Repository Implementations | `<Tech><Entity>Repository.ts` | `PrismaOrderRepository.ts` |
 
 ### TypeScript
@@ -253,7 +256,7 @@ export class CreateOrderUseCase {
 export class PrismaOrderRepository implements IOrderRepository {
   async save(order: Order): Promise<void> {
     await prisma.order.create({
-      data: this.toSchema(order)
+      data: this.toSchema(order),
     });
   }
 }
@@ -386,14 +389,14 @@ Before generating code, verify:
 
 ## 🐛 Quick Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Module not found | `npm install` |
-| TypeScript errors | `npx tsc --noEmit` |
-| Tailwind not applying | Restart dev server, check `@import "tailwindcss"` in globals.css |
-| Port 3000 in use | `npm run dev -- -p 3001` |
-| ESLint errors | `npm run lint:fix` |
-| Hot reload not working | Clear `.next` folder, restart server |
+| Issue                  | Solution                                                         |
+| ---------------------- | ---------------------------------------------------------------- |
+| Module not found       | `npm install`                                                    |
+| TypeScript errors      | `npx tsc --noEmit`                                               |
+| Tailwind not applying  | Restart dev server, check `@import "tailwindcss"` in globals.css |
+| Port 3000 in use       | `npm run dev -- -p 3001`                                         |
+| ESLint errors          | `npm run lint:fix`                                               |
+| Hot reload not working | Clear `.next` folder, restart server                             |
 
 **📖 Detailed Troubleshooting**: (To be created in guides)
 
@@ -421,11 +424,13 @@ Before generating code, verify:
 ## 📋 Documentation Changelog
 
 ### Version 3.2.0 (2025-11-17)
+
 - ✅ **ADDED** - Frontend guidelines: All UI must be written in React
 - ✅ **ADDED** - UI Implementation Guidelines section with Figma MCP usage
 - ✅ **UPDATED** - AI Assistant guidelines to include Figma MCP for design reference
 
 ### Version 3.1.0 (2025-11-17)
+
 - ✅ **ELIMINATED DUPLICATION** - Removed overlapping content between `specs/` and `docs/`
 - ✅ **CONSOLIDATED** - Architecture and DDD details now in `specs/` only
 - ✅ **REMOVED** `docs/architecture/` (duplicate of `specs/01-architecture.md`)
@@ -437,6 +442,7 @@ Before generating code, verify:
   - `docs/guides/` → Common development tasks
 
 ### Version 3.0.0 (2025-11-17)
+
 - ✅ **RESTRUCTURED** - Split documentation into modular files
 - ✅ **REDUCED** main CLAUDE.md to ~440 lines (Quick Reference)
 - ✅ **CREATED** `/docs` directory structure
@@ -444,12 +450,15 @@ Before generating code, verify:
 - ✅ **IMPROVED** navigation with quick links
 
 ### Version 2.1.0 (2025-11-17)
+
 - Added Prettier and shadcn/ui to tech stack
 
 ### Version 2.0.0 (2025-11-16)
+
 - Added comprehensive DDD architecture
 
 ### Version 1.0.0 (2025-11-16)
+
 - Initial CLAUDE.md creation
 
 ---
@@ -460,4 +469,4 @@ Before generating code, verify:
 
 ---
 
-*For project specifications, see [`specs/`](specs/). For development guides, see [`docs/`](docs/).*
+_For project specifications, see [`specs/`](specs/). For development guides, see [`docs/`](docs/)._

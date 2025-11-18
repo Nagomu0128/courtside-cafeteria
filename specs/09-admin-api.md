@@ -1,7 +1,7 @@
 # 10. 管理者API仕様（neverthrow版）
 
 ```typescript
-import { ResultAsync, ok, err, combine } from 'neverthrow';
+import { ResultAsync, ok, err, combine } from "neverthrow";
 
 // application/admin/AdminOrderService.ts
 export class AdminOrderService {
@@ -15,26 +15,26 @@ export class AdminOrderService {
   getOrderSummary(
     input: OrderSummaryInput
   ): ResultAsync<OrderSummaryOutput, DomainError> {
-    return this.menuRepository.findById(input.menuId)
-      .andThen(menu => {
+    return this.menuRepository
+      .findById(input.menuId)
+      .andThen((menu) => {
         if (!menu) {
           return err(DomainError.menuNotFound());
         }
         return ok(menu);
       })
-      .andThen(menu =>
-        this.orderRepository.countByMenuIdAndOptions(
-          input.menuId,
-          input.filters
-        ).map(counts => ({ menu, counts }))
+      .andThen((menu) =>
+        this.orderRepository
+          .countByMenuIdAndOptions(input.menuId, input.filters)
+          .map((counts) => ({ menu, counts }))
       )
       .map(({ menu, counts }) => {
         // 集計処理
         const totalOrders = counts.reduce((sum, c) => sum + c.count, 0);
 
-        const byDepartment = this.groupBy(counts, 'department');
-        const byGender = this.groupBy(counts, 'gender');
-        const byAgeGroup = this.groupBy(counts, 'ageGroup');
+        const byDepartment = this.groupBy(counts, "department");
+        const byGender = this.groupBy(counts, "gender");
+        const byAgeGroup = this.groupBy(counts, "ageGroup");
         const byOptions = this.groupByOptions(counts);
 
         return {
@@ -46,9 +46,9 @@ export class AdminOrderService {
             byDepartment,
             byGender,
             byAgeGroup,
-            byOptions
+            byOptions,
           },
-          generatedAt: new Date()
+          generatedAt: new Date(),
         };
       });
   }
@@ -59,16 +59,15 @@ export class AdminOrderService {
   ): ResultAsync<ExportResult, DomainError> {
     return ResultAsync.combine([
       this.menuRepository.findById(input.menuId),
-      this.orderRepository.findByMenuId(input.menuId)
-    ])
-    .andThen(([menu, orders]) => {
+      this.orderRepository.findByMenuId(input.menuId),
+    ]).andThen(([menu, orders]) => {
       if (!menu) {
         return err(DomainError.menuNotFound());
       }
 
-      const data = orders.map(order => ({
+      const data = orders.map((order) => ({
         注文番号: order.orderNumber,
-        注文日時: format(order.orderedAt, 'yyyy-MM-dd HH:mm:ss'),
+        注文日時: format(order.orderedAt, "yyyy-MM-dd HH:mm:ss"),
         部署: order.userInfo.department,
         名前: order.userInfo.name,
         性別: this.translateGender(order.userInfo.gender),
@@ -76,30 +75,31 @@ export class AdminOrderService {
         ...this.flattenOptions(order.selectedOptions),
         ステータス: this.translateStatus(order.status),
         変更日時: order.modifiedAt
-          ? format(order.modifiedAt, 'yyyy-MM-dd HH:mm:ss')
-          : '',
+          ? format(order.modifiedAt, "yyyy-MM-dd HH:mm:ss")
+          : "",
         キャンセル日時: order.cancelledAt
-          ? format(order.cancelledAt, 'yyyy-MM-dd HH:mm:ss')
-          : ''
+          ? format(order.cancelledAt, "yyyy-MM-dd HH:mm:ss")
+          : "",
       }));
 
-      const exportPromise = input.format === 'CSV'
-        ? this.exportService.exportToCSV(data)
-        : this.exportService.exportToExcel(data, {
-            sheetName: `注文一覧_${format(menu.availableDate, 'yyyyMMdd')}`,
-            autoFilter: true,
-            freezePane: { row: 1, column: 3 }
-          });
+      const exportPromise =
+        input.format === "CSV"
+          ? this.exportService.exportToCSV(data)
+          : this.exportService.exportToExcel(data, {
+              sheetName: `注文一覧_${format(menu.availableDate, "yyyyMMdd")}`,
+              autoFilter: true,
+              freezePane: { row: 1, column: 3 },
+            });
 
-      return ResultAsync.fromPromise(
-        exportPromise,
-        (error) => DomainError.internal('エクスポートに失敗しました')
-      ).map(buffer => ({
-        fileName: `orders_${input.menuId}_${format(new Date(), 'yyyyMMddHHmmss')}.${input.format.toLowerCase()}`,
-        mimeType: input.format === 'CSV'
-          ? 'text/csv'
-          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        buffer
+      return ResultAsync.fromPromise(exportPromise, (error) =>
+        DomainError.internal("エクスポートに失敗しました")
+      ).map((buffer) => ({
+        fileName: `orders_${input.menuId}_${format(new Date(), "yyyyMMddHHmmss")}.${input.format.toLowerCase()}`,
+        mimeType:
+          input.format === "CSV"
+            ? "text/csv"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        buffer,
       }));
     });
   }
@@ -125,8 +125,8 @@ export class AdminOrderService {
     const menu: Menu = {
       id: generateUUID(),
       name: input.name,
-      description: input.description || '',
-      imageUrl: input.imageUrl || '',
+      description: input.description || "",
+      imageUrl: input.imageUrl || "",
       price: priceResult.value,
       availableDate: new Date(input.availableDate),
       orderDeadline: new Date(input.orderDeadline),
@@ -134,42 +134,47 @@ export class AdminOrderService {
       status: MenuStatus.DRAFT,
       options: [],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
-    return this.menuRepository.save(menu)
-      .andThen(savedMenu => {
-        if (input.options && input.options.length > 0) {
-          return this.setupMenuOptions(savedMenu.id, input.options)
-            .map(() => savedMenu);
-        }
-        return ok(savedMenu);
-      });
+    return this.menuRepository.save(menu).andThen((savedMenu) => {
+      if (input.options && input.options.length > 0) {
+        return this.setupMenuOptions(savedMenu.id, input.options).map(
+          () => savedMenu
+        );
+      }
+      return ok(savedMenu);
+    });
   }
 
   updateMenuStatus(
     menuId: string,
     status: MenuStatus
   ): ResultAsync<Menu, DomainError> {
-    return this.menuRepository.findById(menuId)
-      .andThen(menu => {
+    return this.menuRepository
+      .findById(menuId)
+      .andThen((menu) => {
         if (!menu) {
           return err(DomainError.menuNotFound());
         }
 
         // ステータス変更のビジネスルール
         if (menu.status === MenuStatus.CANCELLED) {
-          return err(new DomainError(
-            'キャンセル済みのメニューは変更できません',
-            'INVALID_STATUS_TRANSITION'
-          ));
+          return err(
+            new DomainError(
+              "キャンセル済みのメニューは変更できません",
+              "INVALID_STATUS_TRANSITION"
+            )
+          );
         }
 
         if (status === MenuStatus.ACTIVE && new Date() > menu.orderDeadline) {
-          return err(new DomainError(
-            '締切を過ぎたメニューは公開できません',
-            'INVALID_STATUS_TRANSITION'
-          ));
+          return err(
+            new DomainError(
+              "締切を過ぎたメニューは公開できません",
+              "INVALID_STATUS_TRANSITION"
+            )
+          );
         }
 
         menu.status = status;
@@ -177,7 +182,7 @@ export class AdminOrderService {
 
         return ok(menu);
       })
-      .andThen(menu => this.menuRepository.update(menu));
+      .andThen((menu) => this.menuRepository.update(menu));
   }
 
   // ヘルパーメソッド
@@ -191,12 +196,15 @@ export class AdminOrderService {
       return acc;
     }, {});
 
-    const total = Object.values(grouped).reduce((sum: number, count: any) => sum + count, 0);
+    const total = Object.values(grouped).reduce(
+      (sum: number, count: any) => sum + count,
+      0
+    );
 
     return Object.entries(grouped).map(([key, count]) => ({
       key,
       count: count as number,
-      percentage: total > 0 ? ((count as number) / total) * 100 : 0
+      percentage: total > 0 ? ((count as number) / total) * 100 : 0,
     }));
   }
 
@@ -215,8 +223,8 @@ export class AdminOrderService {
       optionGroupId: groupId,
       values: Array.from(values.entries()).map(([value, count]) => ({
         value,
-        count
-      }))
+        count,
+      })),
     }));
   }
 
@@ -224,7 +232,7 @@ export class AdminOrderService {
     const flattened: any = {};
     for (const option of options) {
       const value = Array.isArray(option.selectedValue)
-        ? option.selectedValue.join(', ')
+        ? option.selectedValue.join(", ")
         : option.selectedValue;
       flattened[`オプション_${option.optionGroupId}`] = value;
     }
@@ -233,30 +241,30 @@ export class AdminOrderService {
 
   private translateGender(gender: Gender): string {
     const translations = {
-      [Gender.MALE]: '男性',
-      [Gender.FEMALE]: '女性',
-      [Gender.OTHER]: 'その他'
+      [Gender.MALE]: "男性",
+      [Gender.FEMALE]: "女性",
+      [Gender.OTHER]: "その他",
     };
     return translations[gender] || gender;
   }
 
   private translateAgeGroup(ageGroup: AgeGroup): string {
     const translations = {
-      [AgeGroup.UNDER_20]: '20歳未満',
-      [AgeGroup.TWENTIES]: '20代',
-      [AgeGroup.THIRTIES]: '30代',
-      [AgeGroup.FORTIES]: '40代',
-      [AgeGroup.FIFTIES]: '50代',
-      [AgeGroup.OVER_60]: '60歳以上'
+      [AgeGroup.UNDER_20]: "20歳未満",
+      [AgeGroup.TWENTIES]: "20代",
+      [AgeGroup.THIRTIES]: "30代",
+      [AgeGroup.FORTIES]: "40代",
+      [AgeGroup.FIFTIES]: "50代",
+      [AgeGroup.OVER_60]: "60歳以上",
     };
     return translations[ageGroup] || ageGroup;
   }
 
   private translateStatus(status: OrderStatus): string {
     const translations = {
-      [OrderStatus.CONFIRMED]: '確定',
-      [OrderStatus.MODIFIED]: '変更済',
-      [OrderStatus.CANCELLED]: 'キャンセル'
+      [OrderStatus.CONFIRMED]: "確定",
+      [OrderStatus.MODIFIED]: "変更済",
+      [OrderStatus.CANCELLED]: "キャンセル",
     };
     return translations[status] || status;
   }

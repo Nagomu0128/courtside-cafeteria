@@ -5,6 +5,7 @@
 QRコードを読み取ることで、ユーザーが自動的に匿名認証され、注文機能を利用できるようにする仕様です。
 
 ### 原則
+
 - **フリクションレス**: ログインフォーム不要、QRコードをスキャンするだけで利用開始
 - **匿名性**: 個人を特定する情報は不要（注文時に任意で入力）
 - **セキュリティ**: セッションベースの認証とCSRF対策
@@ -49,13 +50,14 @@ QRコードを読み取ることで、ユーザーが自動的に匿名認証さ
 
 ```typescript
 // QRコードに埋め込む内容（シンプルな固定URL）
-const QR_CODE_URL = 'https://cafeteria.example.com/';
+const QR_CODE_URL = "https://cafeteria.example.com/";
 
 // または、環境パラメータを含める場合
-const QR_CODE_URL = 'https://cafeteria.example.com/?source=qr&location=floor2';
+const QR_CODE_URL = "https://cafeteria.example.com/?source=qr&location=floor2";
 ```
 
 **設計方針**:
+
 - QRコードには固定URLのみ埋め込む（一時トークン不要）
 - シンプルで運用しやすい
 - QRコードの印刷・配布が容易
@@ -69,21 +71,21 @@ const QR_CODE_URL = 'https://cafeteria.example.com/?source=qr&location=floor2';
 ```typescript
 // domain/errors/DomainError.ts（既存に追加）
 export type DomainErrorCode =
-  | 'ORDER_DEADLINE_PASSED'
-  | 'DUPLICATE_ORDER'
+  | "ORDER_DEADLINE_PASSED"
+  | "DUPLICATE_ORDER"
   // ... 既存のエラーコード
-  | 'SESSION_CREATION_FAILED'
-  | 'INVALID_SESSION_TOKEN'
-  | 'SESSION_EXPIRED'
-  | 'SESSION_NOT_FOUND';
+  | "SESSION_CREATION_FAILED"
+  | "INVALID_SESSION_TOKEN"
+  | "SESSION_EXPIRED"
+  | "SESSION_NOT_FOUND";
 
 export class DomainError {
   // ... 既存のファクトリーメソッド
 
   static sessionCreationFailed(details?: string): DomainError {
     return new DomainError(
-      'セッションの作成に失敗しました',
-      'SESSION_CREATION_FAILED',
+      "セッションの作成に失敗しました",
+      "SESSION_CREATION_FAILED",
       500,
       { details }
     );
@@ -91,24 +93,24 @@ export class DomainError {
 
   static invalidSessionToken(): DomainError {
     return new DomainError(
-      '無効なセッショントークンです',
-      'INVALID_SESSION_TOKEN',
+      "無効なセッショントークンです",
+      "INVALID_SESSION_TOKEN",
       401
     );
   }
 
   static sessionExpired(): DomainError {
     return new DomainError(
-      'セッションの有効期限が切れました',
-      'SESSION_EXPIRED',
+      "セッションの有効期限が切れました",
+      "SESSION_EXPIRED",
       401
     );
   }
 
   static sessionNotFound(): DomainError {
     return new DomainError(
-      'セッションが見つかりません',
-      'SESSION_NOT_FOUND',
+      "セッションが見つかりません",
+      "SESSION_NOT_FOUND",
       404
     );
   }
@@ -120,19 +122,19 @@ export class DomainError {
 ```typescript
 // domain/entities/User.ts（既存）
 export interface User {
-  id: string;              // UUID（匿名ユーザーID）
-  sessionToken: string;    // セッション管理用トークン（64文字以上）
-  createdAt: Date;         // アカウント作成日時
-  lastAccessedAt: Date;    // 最終アクセス日時
-  profile?: UserProfile;   // ユーザープロファイル（任意）
+  id: string; // UUID（匿名ユーザーID）
+  sessionToken: string; // セッション管理用トークン（64文字以上）
+  createdAt: Date; // アカウント作成日時
+  lastAccessedAt: Date; // 最終アクセス日時
+  profile?: UserProfile; // ユーザープロファイル（任意）
   metadata?: SessionMetadata; // セッションメタデータ
 }
 
 export interface SessionMetadata {
-  source?: string;        // 'qr', 'web', 'mobile'
-  location?: string;      // QRコードの設置場所（例: 'floor2'）
-  userAgent?: string;     // ユーザーエージェント
-  ipAddress?: string;     // IPアドレス（匿名化推奨）
+  source?: string; // 'qr', 'web', 'mobile'
+  location?: string; // QRコードの設置場所（例: 'floor2'）
+  userAgent?: string; // ユーザーエージェント
+  ipAddress?: string; // IPアドレス（匿名化推奨）
 }
 ```
 
@@ -144,8 +146,8 @@ export interface SessionMetadata {
 
 ```typescript
 // application/services/AnonymousAuthService.ts
-import { Result, ResultAsync, ok, err } from 'neverthrow';
-import * as crypto from 'crypto';
+import { Result, ResultAsync, ok, err } from "neverthrow";
+import * as crypto from "crypto";
 
 export class AnonymousAuthService {
   constructor(
@@ -177,49 +179,43 @@ export class AnonymousAuthService {
       createdAt: new Date(),
       lastAccessedAt: new Date(),
       metadata: {
-        source: request.source || 'qr',
+        source: request.source || "qr",
         location: request.location,
         userAgent: request.userAgent,
-        ipAddress: this.anonymizeIP(request.ipAddress)
-      }
+        ipAddress: this.anonymizeIP(request.ipAddress),
+      },
     };
 
-    return this.userRepository.save(user)
-      .map(savedUser => ({
-        userId: savedUser.id,
-        sessionToken: savedUser.sessionToken,
-        expiresAt: this.calculateExpirationDate(),
-        redirectUrl: '/menu'
-      }));
+    return this.userRepository.save(user).map((savedUser) => ({
+      userId: savedUser.id,
+      sessionToken: savedUser.sessionToken,
+      expiresAt: this.calculateExpirationDate(),
+      redirectUrl: "/menu",
+    }));
   }
 
   /**
    * 既存セッションを検証
    * すべてのAPIリクエストで呼び出される
    */
-  validateSession(
-    sessionToken: string
-  ): ResultAsync<User, DomainError> {
+  validateSession(sessionToken: string): ResultAsync<User, DomainError> {
     return this.securityMiddleware.validateSession(sessionToken);
   }
 
   /**
    * セッションを更新（アクセス時刻を更新）
    */
-  refreshSession(
-    userId: string
-  ): ResultAsync<void, DomainError> {
+  refreshSession(userId: string): ResultAsync<void, DomainError> {
     return this.userRepository.updateLastAccessed(userId);
   }
 
   /**
    * セッションを無効化（ログアウト）
    */
-  invalidateSession(
-    sessionToken: string
-  ): ResultAsync<void, DomainError> {
-    return this.userRepository.findBySessionToken(sessionToken)
-      .andThen(user => {
+  invalidateSession(sessionToken: string): ResultAsync<void, DomainError> {
+    return this.userRepository
+      .findBySessionToken(sessionToken)
+      .andThen((user) => {
         if (!user) {
           return err(DomainError.sessionNotFound());
         }
@@ -232,12 +228,10 @@ export class AnonymousAuthService {
   private generateSecureToken(): Result<string, DomainError> {
     try {
       // 64バイト（512ビット）のランダムトークン
-      const token = crypto.randomBytes(64).toString('base64url');
+      const token = crypto.randomBytes(64).toString("base64url");
       return ok(token);
     } catch (error) {
-      return err(DomainError.sessionCreationFailed(
-        'トークン生成エラー'
-      ));
+      return err(DomainError.sessionCreationFailed("トークン生成エラー"));
     }
   }
 
@@ -256,7 +250,7 @@ export class AnonymousAuthService {
     if (!ip) return undefined;
     // IPv4: 最後のオクテットをマスク（例: 192.168.1.xxx → 192.168.1.0）
     // IPv6: 下位64ビットをマスク
-    const parts = ip.split('.');
+    const parts = ip.split(".");
     if (parts.length === 4) {
       return `${parts[0]}.${parts[1]}.${parts[2]}.0`;
     }
@@ -266,10 +260,10 @@ export class AnonymousAuthService {
 
 // Types
 export interface CreateSessionRequest {
-  source?: string;      // 'qr', 'web', etc.
-  location?: string;    // QRコードの場所
-  userAgent?: string;   // User-Agent header
-  ipAddress?: string;   // クライアントIP
+  source?: string; // 'qr', 'web', etc.
+  location?: string; // QRコードの場所
+  userAgent?: string; // User-Agent header
+  ipAddress?: string; // クライアントIP
 }
 
 export interface CreateSessionResponse {
@@ -288,17 +282,17 @@ export interface CreateSessionResponse {
 
 ```typescript
 // app/page.tsx（サーバーコンポーネント）
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { AnonymousAuthService } from '@/src/application/services/AnonymousAuthService';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { AnonymousAuthService } from "@/src/application/services/AnonymousAuthService";
 
 export default async function HomePage({
-  searchParams
+  searchParams,
 }: {
-  searchParams: { source?: string; location?: string }
+  searchParams: { source?: string; location?: string };
 }) {
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
+  const sessionToken = cookieStore.get("session_token")?.value;
 
   // 既存セッションの検証
   if (sessionToken) {
@@ -307,15 +301,15 @@ export default async function HomePage({
 
     if (validationResult.isOk()) {
       // セッション有効 → メニュー画面へ
-      redirect('/menu');
+      redirect("/menu");
     }
     // セッション無効の場合は新規作成へ進む
   }
 
   // 新規セッション作成へリダイレクト
   const params = new URLSearchParams({
-    source: searchParams.source || 'qr',
-    location: searchParams.location || ''
+    source: searchParams.source || "qr",
+    location: searchParams.location || "",
   });
 
   redirect(`/api/auth/anonymous?${params.toString()}`);
@@ -329,32 +323,34 @@ export default async function HomePage({
 **目的**: 匿名セッションを作成し、Cookieにセット
 
 **リクエスト**:
+
 ```typescript
 // app/api/auth/anonymous/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { AnonymousAuthService } from '@/src/application/services/AnonymousAuthService';
+import { NextRequest, NextResponse } from "next/server";
+import { AnonymousAuthService } from "@/src/application/services/AnonymousAuthService";
 
 export async function POST(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const userAgent = request.headers.get('user-agent') || undefined;
-  const ipAddress = request.headers.get('x-forwarded-for') ||
-                    request.headers.get('x-real-ip') ||
-                    undefined;
+  const userAgent = request.headers.get("user-agent") || undefined;
+  const ipAddress =
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") ||
+    undefined;
 
   const authService = new AnonymousAuthService(/* dependencies */);
 
   const result = await authService.createAnonymousSession({
-    source: searchParams.get('source') || 'qr',
-    location: searchParams.get('location') || undefined,
+    source: searchParams.get("source") || "qr",
+    location: searchParams.get("location") || undefined,
     userAgent,
-    ipAddress
+    ipAddress,
   });
 
   if (result.isErr()) {
     return NextResponse.json(
       {
         error: result.error.message,
-        code: result.error.code
+        code: result.error.code,
       },
       { status: result.error.statusCode }
     );
@@ -363,16 +359,14 @@ export async function POST(request: NextRequest) {
   const { sessionToken, expiresAt, redirectUrl } = result.value;
 
   // セッションCookieをセット
-  const response = NextResponse.redirect(
-    new URL(redirectUrl, request.url)
-  );
+  const response = NextResponse.redirect(new URL(redirectUrl, request.url));
 
-  response.cookies.set('session_token', sessionToken, {
-    httpOnly: true,        // XSS対策
-    secure: process.env.NODE_ENV === 'production', // HTTPS必須
-    sameSite: 'lax',       // CSRF対策
-    expires: expiresAt,    // 有効期限
-    path: '/'              // 全パスで有効
+  response.cookies.set("session_token", sessionToken, {
+    httpOnly: true, // XSS対策
+    secure: process.env.NODE_ENV === "production", // HTTPS必須
+    sameSite: "lax", // CSRF対策
+    expires: expiresAt, // 有効期限
+    path: "/", // 全パスで有効
   });
 
   return response;
@@ -385,6 +379,7 @@ export async function GET(request: NextRequest) {
 ```
 
 **レスポンス**:
+
 - 成功: 302 Redirect to /menu（Cookieにセッショントークンをセット）
 - 失敗: JSON形式のエラー
 
@@ -402,21 +397,21 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 // app/middleware.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { AnonymousAuthService } from '@/src/application/services/AnonymousAuthService';
+import { NextRequest, NextResponse } from "next/server";
+import { AnonymousAuthService } from "@/src/application/services/AnonymousAuthService";
 
 export async function middleware(request: NextRequest) {
-  const sessionToken = request.cookies.get('session_token')?.value;
+  const sessionToken = request.cookies.get("session_token")?.value;
 
   // 公開パスはスキップ
-  const publicPaths = ['/', '/api/auth/anonymous'];
+  const publicPaths = ["/", "/api/auth/anonymous"];
   if (publicPaths.includes(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
 
   // セッションチェック
   if (!sessionToken) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   const authService = new AnonymousAuthService(/* dependencies */);
@@ -424,8 +419,8 @@ export async function middleware(request: NextRequest) {
 
   if (validationResult.isErr()) {
     // セッション無効 → ルートへリダイレクト
-    const response = NextResponse.redirect(new URL('/', request.url));
-    response.cookies.delete('session_token');
+    const response = NextResponse.redirect(new URL("/", request.url));
+    response.cookies.delete("session_token");
     return response;
   }
 
@@ -444,7 +439,7 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
   ],
 };
 ```
@@ -457,15 +452,15 @@ export const config = {
 
 ```typescript
 // app/api/auth/logout/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { AnonymousAuthService } from '@/src/application/services/AnonymousAuthService';
+import { NextRequest, NextResponse } from "next/server";
+import { AnonymousAuthService } from "@/src/application/services/AnonymousAuthService";
 
 export async function POST(request: NextRequest) {
-  const sessionToken = request.cookies.get('session_token')?.value;
+  const sessionToken = request.cookies.get("session_token")?.value;
 
   if (!sessionToken) {
     return NextResponse.json(
-      { error: 'セッションが見つかりません' },
+      { error: "セッションが見つかりません" },
       { status: 400 }
     );
   }
@@ -473,12 +468,13 @@ export async function POST(request: NextRequest) {
   const authService = new AnonymousAuthService(/* dependencies */);
   const result = await authService.invalidateSession(sessionToken);
 
-  const response = NextResponse.json(
-    { success: true, message: 'ログアウトしました' }
-  );
+  const response = NextResponse.json({
+    success: true,
+    message: "ログアウトしました",
+  });
 
   // Cookieを削除
-  response.cookies.delete('session_token');
+  response.cookies.delete("session_token");
 
   return response;
 }
@@ -492,8 +488,8 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 // infrastructure/persistence/supabase/repositories/SupabaseUserRepository.ts
-import { ResultAsync, ok, err } from 'neverthrow';
-import { createClient } from '@supabase/supabase-js';
+import { ResultAsync, ok, err } from "neverthrow";
+import { createClient } from "@supabase/supabase-js";
 
 export class SupabaseUserRepository implements IUserRepository {
   constructor(private supabase: ReturnType<typeof createClient>) {}
@@ -501,13 +497,13 @@ export class SupabaseUserRepository implements IUserRepository {
   save(user: User): ResultAsync<User, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('users')
+        .from("users")
         .insert({
           id: user.id,
           session_token: user.sessionToken,
           created_at: user.createdAt.toISOString(),
           last_accessed_at: user.lastAccessedAt.toISOString(),
-          metadata: user.metadata || null
+          metadata: user.metadata || null,
         })
         .select()
         .single(),
@@ -523,9 +519,9 @@ export class SupabaseUserRepository implements IUserRepository {
   findBySessionToken(token: string): ResultAsync<User | null, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('users')
-        .select('*')
-        .eq('session_token', token)
+        .from("users")
+        .select("*")
+        .eq("session_token", token)
         .maybeSingle(),
       (error) => DomainError.internal(`検索エラー: ${error}`)
     ).andThen(({ data, error }) => {
@@ -539,19 +535,16 @@ export class SupabaseUserRepository implements IUserRepository {
   updateLastAccessed(id: string): ResultAsync<void, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('users')
+        .from("users")
         .update({ last_accessed_at: new Date().toISOString() })
-        .eq('id', id),
+        .eq("id", id),
       (error) => DomainError.internal(`更新エラー: ${error}`)
     ).map(() => undefined);
   }
 
   delete(id: string): ResultAsync<void, DomainError> {
     return ResultAsync.fromPromise(
-      this.supabase
-        .from('users')
-        .delete()
-        .eq('id', id),
+      this.supabase.from("users").delete().eq("id", id),
       (error) => DomainError.internal(`削除エラー: ${error}`)
     ).map(() => undefined);
   }
@@ -562,7 +555,7 @@ export class SupabaseUserRepository implements IUserRepository {
       sessionToken: data.session_token,
       createdAt: new Date(data.created_at),
       lastAccessedAt: new Date(data.last_accessed_at),
-      metadata: data.metadata
+      metadata: data.metadata,
     };
   }
 }
@@ -605,8 +598,8 @@ $$ LANGUAGE plpgsql;
 
 ```typescript
 // infrastructure/security/CSRFProtection.ts
-import { Result, ok, err } from 'neverthrow';
-import * as crypto from 'crypto';
+import { Result, ok, err } from "neverthrow";
+import * as crypto from "crypto";
 
 export class CSRFProtection {
   /**
@@ -615,15 +608,15 @@ export class CSRFProtection {
   generateCSRFToken(sessionToken: string): Result<string, DomainError> {
     try {
       // セッショントークンとランダム値からCSRFトークンを生成
-      const randomValue = crypto.randomBytes(32).toString('hex');
+      const randomValue = crypto.randomBytes(32).toString("hex");
       const csrfToken = crypto
-        .createHmac('sha256', process.env.CSRF_SECRET || 'default-secret')
+        .createHmac("sha256", process.env.CSRF_SECRET || "default-secret")
         .update(`${sessionToken}:${randomValue}`)
-        .digest('hex');
+        .digest("hex");
 
       return ok(csrfToken);
     } catch (error) {
-      return err(DomainError.internal('CSRFトークン生成エラー'));
+      return err(DomainError.internal("CSRFトークン生成エラー"));
     }
   }
 
@@ -635,12 +628,12 @@ export class CSRFProtection {
     sessionToken: string
   ): Result<void, DomainError> {
     if (!csrfToken || !sessionToken) {
-      return err(DomainError.unauthorized('CSRFトークンが無効です'));
+      return err(DomainError.unauthorized("CSRFトークンが無効です"));
     }
 
     // トークンの形式検証
     if (!/^[a-f0-9]{64}$/.test(csrfToken)) {
-      return err(DomainError.unauthorized('CSRFトークン形式が不正です'));
+      return err(DomainError.unauthorized("CSRFトークン形式が不正です"));
     }
 
     // 実際の検証はセッションストアに保存されたトークンと比較
@@ -654,7 +647,7 @@ export class CSRFProtection {
 
 ```typescript
 // infrastructure/security/QRAuthRateLimiter.ts
-import { ResultAsync, ok, err } from 'neverthrow';
+import { ResultAsync, ok, err } from "neverthrow";
 
 export class QRAuthRateLimiter {
   constructor(
@@ -668,27 +661,28 @@ export class QRAuthRateLimiter {
    */
   checkLimit(ipAddress: string): ResultAsync<void, DomainError> {
     const key = `qr_auth_rate:${ipAddress}`;
-    const limit = this.config.maxSessionsPerIP || 5;  // 5分間に5セッションまで
+    const limit = this.config.maxSessionsPerIP || 5; // 5分間に5セッションまで
     const window = 300; // 5分
 
-    return ResultAsync.fromPromise(
-      this.redis.get(key),
-      (error) => DomainError.internal('レート制限チェックエラー')
+    return ResultAsync.fromPromise(this.redis.get(key), (error) =>
+      DomainError.internal("レート制限チェックエラー")
     ).andThen((count) => {
       const currentCount = count ? parseInt(count, 10) : 0;
 
       if (currentCount >= limit) {
-        return err(new DomainError(
-          'セッション作成が制限されています。しばらくお待ちください',
-          'RATE_LIMIT_EXCEEDED',
-          429
-        ));
+        return err(
+          new DomainError(
+            "セッション作成が制限されています。しばらくお待ちください",
+            "RATE_LIMIT_EXCEEDED",
+            429
+          )
+        );
       }
 
       // カウントをインクリメント
       return ResultAsync.fromPromise(
         this.redis.incr(key).then(() => this.redis.expire(key, window)),
-        (error) => DomainError.internal('レート制限更新エラー')
+        (error) => DomainError.internal("レート制限更新エラー")
       ).map(() => undefined);
     });
   }
@@ -716,11 +710,13 @@ export class SessionValidator {
     const storedUserAgent = user.metadata?.userAgent;
 
     if (storedUserAgent && storedUserAgent !== currentUserAgent) {
-      return err(new DomainError(
-        'セッションが無効です。再度QRコードをスキャンしてください',
-        'SESSION_HIJACK_DETECTED',
-        401
-      ));
+      return err(
+        new DomainError(
+          "セッションが無効です。再度QRコードをスキャンしてください",
+          "SESSION_HIJACK_DETECTED",
+          401
+        )
+      );
     }
 
     return ok(undefined);
@@ -736,17 +732,17 @@ export class SessionValidator {
 
 ```typescript
 // presentation/utils/errorHandler.ts
-import { DomainError } from '@/src/domain/errors/DomainError';
+import { DomainError } from "@/src/domain/errors/DomainError";
 
 export function handleAuthError(error: DomainError): Response {
   const statusCode = error.statusCode || 500;
 
   // ログ出力（本番環境では構造化ログ推奨）
-  console.error('[Auth Error]', {
+  console.error("[Auth Error]", {
     code: error.code,
     message: error.message,
     details: error.details,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   // ユーザーフレンドリーなメッセージ
@@ -756,24 +752,27 @@ export function handleAuthError(error: DomainError): Response {
     JSON.stringify({
       error: userMessage,
       code: error.code,
-      statusCode
+      statusCode,
     }),
     {
       status: statusCode,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { "Content-Type": "application/json" },
     }
   );
 }
 
 function getUserFriendlyMessage(code: string): string {
   const messages: Record<string, string> = {
-    SESSION_CREATION_FAILED: 'セッションの作成に失敗しました。もう一度QRコードをスキャンしてください',
-    SESSION_EXPIRED: 'セッションの有効期限が切れました。QRコードを再度スキャンしてください',
-    INVALID_SESSION_TOKEN: 'セッションが無効です。QRコードを再度スキャンしてください',
-    RATE_LIMIT_EXCEEDED: 'アクセスが集中しています。しばらくお待ちください'
+    SESSION_CREATION_FAILED:
+      "セッションの作成に失敗しました。もう一度QRコードをスキャンしてください",
+    SESSION_EXPIRED:
+      "セッションの有効期限が切れました。QRコードを再度スキャンしてください",
+    INVALID_SESSION_TOKEN:
+      "セッションが無効です。QRコードを再度スキャンしてください",
+    RATE_LIMIT_EXCEEDED: "アクセスが集中しています。しばらくお待ちください",
   };
 
-  return messages[code] || 'エラーが発生しました';
+  return messages[code] || "エラーが発生しました";
 }
 ```
 
@@ -785,9 +784,9 @@ function getUserFriendlyMessage(code: string): string {
 
 ```typescript
 // app/hooks/useSession.ts
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export function useSession() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -801,9 +800,9 @@ export function useSession() {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('/api/auth/session', {
-        method: 'GET',
-        credentials: 'include'
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        credentials: "include",
       });
 
       setIsAuthenticated(response.ok);
@@ -815,12 +814,12 @@ export function useSession() {
   };
 
   const logout = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include'
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
     });
     setIsAuthenticated(false);
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   return { isAuthenticated, isLoading, logout };
@@ -831,17 +830,14 @@ export function useSession() {
 
 ```typescript
 // app/api/auth/session/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { AnonymousAuthService } from '@/src/application/services/AnonymousAuthService';
+import { NextRequest, NextResponse } from "next/server";
+import { AnonymousAuthService } from "@/src/application/services/AnonymousAuthService";
 
 export async function GET(request: NextRequest) {
-  const sessionToken = request.cookies.get('session_token')?.value;
+  const sessionToken = request.cookies.get("session_token")?.value;
 
   if (!sessionToken) {
-    return NextResponse.json(
-      { authenticated: false },
-      { status: 401 }
-    );
+    return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
   const authService = new AnonymousAuthService(/* dependencies */);
@@ -857,7 +853,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     authenticated: true,
     userId: result.value.id,
-    createdAt: result.value.createdAt
+    createdAt: result.value.createdAt,
   });
 }
 ```
@@ -870,15 +866,16 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 // app/admin/qr-codes/generate/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import QRCode from 'qrcode';
+import { NextRequest, NextResponse } from "next/server";
+import QRCode from "qrcode";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const location = searchParams.get('location') || '';
+  const location = searchParams.get("location") || "";
 
   // QRコードURL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://cafeteria.example.com';
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://cafeteria.example.com";
   const qrUrl = location
     ? `${baseUrl}/?source=qr&location=${encodeURIComponent(location)}`
     : `${baseUrl}/?source=qr`;
@@ -889,21 +886,18 @@ export async function GET(request: NextRequest) {
       width: 300,
       margin: 2,
       color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
     });
 
     return NextResponse.json({
       qrCodeUrl: qrUrl,
       qrCodeImage: qrCodeDataUrl,
-      location: location || 'default'
+      location: location || "default",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'QRコード生成エラー' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "QRコード生成エラー" }, { status: 500 });
   }
 }
 ```
@@ -978,20 +972,22 @@ export default function QRCodeGeneratorPage() {
 
 ```typescript
 // src/application/services/__tests__/AnonymousAuthService.test.ts
-import { describe, it, expect, vi } from 'vitest';
-import { ok, err } from 'neverthrow';
-import { AnonymousAuthService } from '../AnonymousAuthService';
+import { describe, it, expect, vi } from "vitest";
+import { ok, err } from "neverthrow";
+import { AnonymousAuthService } from "../AnonymousAuthService";
 
-describe('AnonymousAuthService', () => {
-  describe('createAnonymousSession', () => {
-    it('正常系: セッションが作成される', async () => {
+describe("AnonymousAuthService", () => {
+  describe("createAnonymousSession", () => {
+    it("正常系: セッションが作成される", async () => {
       const mockUserRepository = {
-        save: vi.fn().mockReturnValue(ok({
-          id: 'test-user-id',
-          sessionToken: 'test-token',
-          createdAt: new Date(),
-          lastAccessedAt: new Date()
-        }))
+        save: vi.fn().mockReturnValue(
+          ok({
+            id: "test-user-id",
+            sessionToken: "test-token",
+            createdAt: new Date(),
+            lastAccessedAt: new Date(),
+          })
+        ),
       };
 
       const service = new AnonymousAuthService(
@@ -1000,22 +996,22 @@ describe('AnonymousAuthService', () => {
       );
 
       const result = await service.createAnonymousSession({
-        source: 'qr',
-        location: 'floor2'
+        source: "qr",
+        location: "floor2",
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.userId).toBe('test-user-id');
-        expect(result.value.sessionToken).toBe('test-token');
+        expect(result.value.userId).toBe("test-user-id");
+        expect(result.value.sessionToken).toBe("test-token");
       }
     });
 
-    it('異常系: リポジトリエラー', async () => {
+    it("異常系: リポジトリエラー", async () => {
       const mockUserRepository = {
-        save: vi.fn().mockReturnValue(
-          err(DomainError.internal('DB接続エラー'))
-        )
+        save: vi
+          .fn()
+          .mockReturnValue(err(DomainError.internal("DB接続エラー"))),
       };
 
       const service = new AnonymousAuthService(
@@ -1024,12 +1020,12 @@ describe('AnonymousAuthService', () => {
       );
 
       const result = await service.createAnonymousSession({
-        source: 'qr'
+        source: "qr",
       });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.code).toBe('INTERNAL_ERROR');
+        expect(result.error.code).toBe("INTERNAL_ERROR");
       }
     });
   });
@@ -1040,41 +1036,43 @@ describe('AnonymousAuthService', () => {
 
 ```typescript
 // e2e/qr-authentication.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('QRコード認証フロー', () => {
-  test('QRコードアクセスで自動ログイン', async ({ page }) => {
+test.describe("QRコード認証フロー", () => {
+  test("QRコードアクセスで自動ログイン", async ({ page }) => {
     // QRコードURLにアクセス
-    await page.goto('/?source=qr&location=floor2');
+    await page.goto("/?source=qr&location=floor2");
 
     // メニュー画面にリダイレクトされる
-    await expect(page).toHaveURL('/menu');
+    await expect(page).toHaveURL("/menu");
 
     // セッションCookieが設定されている
     const cookies = await page.context().cookies();
-    const sessionCookie = cookies.find(c => c.name === 'session_token');
+    const sessionCookie = cookies.find((c) => c.name === "session_token");
     expect(sessionCookie).toBeDefined();
     expect(sessionCookie?.httpOnly).toBe(true);
-    expect(sessionCookie?.sameSite).toBe('Lax');
+    expect(sessionCookie?.sameSite).toBe("Lax");
   });
 
-  test('セッション有効期限切れで再認証', async ({ page, context }) => {
+  test("セッション有効期限切れで再認証", async ({ page, context }) => {
     // 期限切れのセッションCookieをセット
-    await context.addCookies([{
-      name: 'session_token',
-      value: 'expired-token',
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-      expires: Math.floor(Date.now() / 1000) - 3600 // 1時間前に期限切れ
-    }]);
+    await context.addCookies([
+      {
+        name: "session_token",
+        value: "expired-token",
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+        expires: Math.floor(Date.now() / 1000) - 3600, // 1時間前に期限切れ
+      },
+    ]);
 
     // 保護されたページにアクセス
-    await page.goto('/menu');
+    await page.goto("/menu");
 
     // ルートにリダイレクトされる
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL("/");
   });
 });
 ```
@@ -1087,7 +1085,7 @@ test.describe('QRコード認証フロー', () => {
 
 ```typescript
 // scripts/cleanup-expired-sessions.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -1099,12 +1097,12 @@ async function cleanupExpiredSessions() {
   expirationThreshold.setHours(expirationThreshold.getHours() - 24);
 
   const { data, error } = await supabase
-    .from('users')
+    .from("users")
     .delete()
-    .lt('last_accessed_at', expirationThreshold.toISOString());
+    .lt("last_accessed_at", expirationThreshold.toISOString());
 
   if (error) {
-    console.error('セッションクリーンアップエラー:', error);
+    console.error("セッションクリーンアップエラー:", error);
     return;
   }
 
@@ -1190,13 +1188,13 @@ QR_AUTH_RATE_LIMIT=5  # 5分間に5セッションまで
 
 ### 14.2 技術スタック
 
-| レイヤー | 技術 | 用途 |
-|---------|------|------|
+| レイヤー | 技術                  | 用途                                 |
+| -------- | --------------------- | ------------------------------------ |
 | Frontend | Next.js 16 App Router | サーバーコンポーネント、ミドルウェア |
-| Backend | neverthrow | 型安全なエラーハンドリング |
-| Database | Supabase (PostgreSQL) | セッション永続化 |
-| Cache | Redis（推奨） | レート制限、セッションキャッシュ |
-| QR Code | qrcode library | QRコード生成 |
+| Backend  | neverthrow            | 型安全なエラーハンドリング           |
+| Database | Supabase (PostgreSQL) | セッション永続化                     |
+| Cache    | Redis（推奨）         | レート制限、セッションキャッシュ     |
+| QR Code  | qrcode library        | QRコード生成                         |
 
 ### 14.3 セキュリティチェックリスト
 

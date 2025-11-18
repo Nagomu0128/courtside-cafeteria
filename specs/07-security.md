@@ -3,8 +3,8 @@
 ## 原則：最小権限の原則、深層防御、neverthrowによる安全なエラーハンドリング
 
 ```typescript
-import { Result, ResultAsync, ok, err } from 'neverthrow';
-import * as crypto from 'crypto';
+import { Result, ResultAsync, ok, err } from "neverthrow";
+import * as crypto from "crypto";
 
 // infrastructure/security/SecurityMiddleware.ts
 export class SecurityMiddleware {
@@ -18,14 +18,15 @@ export class SecurityMiddleware {
     // 原則：トークンの有効期限チェック
     if (!token || token.length < 32) {
       return ResultAsync.fromSafePromise(
-        Promise.resolve(err(DomainError.unauthorized('無効なトークンです')))
+        Promise.resolve(err(DomainError.unauthorized("無効なトークンです")))
       );
     }
 
-    return this.userRepository.findBySessionToken(token)
-      .andThen(user => {
+    return this.userRepository
+      .findBySessionToken(token)
+      .andThen((user) => {
         if (!user) {
-          return err(DomainError.unauthorized('セッションが見つかりません'));
+          return err(DomainError.unauthorized("セッションが見つかりません"));
         }
 
         const lastAccess = new Date(user.lastAccessedAt);
@@ -34,14 +35,20 @@ export class SecurityMiddleware {
           (now.getTime() - lastAccess.getTime()) / (1000 * 60 * 60);
 
         if (hoursSinceLastAccess > this.config.sessionTimeoutHours) {
-          return err(new DomainError('セッションの有効期限が切れました', 'SESSION_EXPIRED'));
+          return err(
+            new DomainError(
+              "セッションの有効期限が切れました",
+              "SESSION_EXPIRED"
+            )
+          );
         }
 
         return ok(user);
       })
-      .andThen(user =>
+      .andThen((user) =>
         // アクセス時刻更新（エラーは無視）
-        this.userRepository.updateLastAccessed(user.id)
+        this.userRepository
+          .updateLastAccessed(user.id)
           .map(() => user)
           .orElse(() => ok(user))
       );
@@ -57,13 +64,15 @@ export class SecurityMiddleware {
     const window = 3600; // 1時間
 
     return this.getActionCount(key, window)
-      .andThen(count => {
+      .andThen((count) => {
         if (count >= limit) {
-          return err(new DomainError(
-            `リクエストが多すぎます。しばらくお待ちください`,
-            'RATE_LIMIT_EXCEEDED',
-            429
-          ));
+          return err(
+            new DomainError(
+              `リクエストが多すぎます。しばらくお待ちください`,
+              "RATE_LIMIT_EXCEEDED",
+              429
+            )
+          );
         }
         return ok(undefined);
       })
@@ -73,10 +82,10 @@ export class SecurityMiddleware {
   // CSRFトークン生成
   generateCSRFToken(): Result<string, DomainError> {
     try {
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = crypto.randomBytes(32).toString("hex");
       return ok(token);
     } catch (error) {
-      return err(DomainError.internal('CSRFトークンの生成に失敗しました'));
+      return err(DomainError.internal("CSRFトークンの生成に失敗しました"));
     }
   }
 
@@ -86,13 +95,13 @@ export class SecurityMiddleware {
     sessionToken: string
   ): Result<void, DomainError> {
     if (!token || !sessionToken) {
-      return err(DomainError.unauthorized('CSRFトークンが無効です'));
+      return err(DomainError.unauthorized("CSRFトークンが無効です"));
     }
 
     // トークンペアの検証ロジック
     const isValid = this.verifyTokenPair(token, sessionToken);
     if (!isValid) {
-      return err(DomainError.unauthorized('CSRFトークンが一致しません'));
+      return err(DomainError.unauthorized("CSRFトークンが一致しません"));
     }
 
     return ok(undefined);
@@ -126,26 +135,30 @@ export class InputSanitizer {
   static sanitizeHtml(input: string): Result<string, DomainError> {
     try {
       const sanitized = input
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;')
-        .replace(/\//g, '&#x2F;');
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#x27;")
+        .replace(/\//g, "&#x2F;");
       return ok(sanitized);
     } catch (error) {
-      return err(DomainError.internal('入力のサニタイズに失敗しました'));
+      return err(DomainError.internal("入力のサニタイズに失敗しました"));
     }
   }
 
   // SQLインジェクション対策
   static validateSqlInput(input: string): Result<string, DomainError> {
     if (/[';--]/.test(input)) {
-      return err(DomainError.validation([{
-        field: 'input',
-        message: '不正な文字が含まれています',
-        code: 'INVALID_CHARACTERS'
-      }]));
+      return err(
+        DomainError.validation([
+          {
+            field: "input",
+            message: "不正な文字が含まれています",
+            code: "INVALID_CHARACTERS",
+          },
+        ])
+      );
     }
     return ok(input);
   }
@@ -153,15 +166,15 @@ export class InputSanitizer {
 
 // infrastructure/security/EncryptionService.ts
 export class EncryptionService {
-  private algorithm = 'aes-256-gcm';
+  private algorithm = "aes-256-gcm";
   private key: Buffer;
 
   constructor() {
     const keyString = process.env.ENCRYPTION_KEY;
     if (!keyString) {
-      throw new Error('暗号化キーが設定されていません');
+      throw new Error("暗号化キーが設定されていません");
     }
-    this.key = Buffer.from(keyString, 'hex');
+    this.key = Buffer.from(keyString, "hex");
   }
 
   // 個人情報の暗号化
@@ -170,18 +183,18 @@ export class EncryptionService {
       const iv = crypto.randomBytes(16);
       const cipher = crypto.createCipheriv(this.algorithm, this.key, iv);
 
-      let encrypted = cipher.update(text, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
+      let encrypted = cipher.update(text, "utf8", "hex");
+      encrypted += cipher.final("hex");
 
       const authTag = cipher.getAuthTag();
 
       return ok({
         encrypted,
-        iv: iv.toString('hex'),
-        authTag: authTag.toString('hex')
+        iv: iv.toString("hex"),
+        authTag: authTag.toString("hex"),
       });
     } catch (error) {
-      return err(DomainError.internal('暗号化に失敗しました'));
+      return err(DomainError.internal("暗号化に失敗しました"));
     }
   }
 
@@ -191,17 +204,17 @@ export class EncryptionService {
       const decipher = crypto.createDecipheriv(
         this.algorithm,
         this.key,
-        Buffer.from(data.iv, 'hex')
+        Buffer.from(data.iv, "hex")
       );
 
-      decipher.setAuthTag(Buffer.from(data.authTag, 'hex'));
+      decipher.setAuthTag(Buffer.from(data.authTag, "hex"));
 
-      let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
+      let decrypted = decipher.update(data.encrypted, "hex", "utf8");
+      decrypted += decipher.final("utf8");
 
       return ok(decrypted);
     } catch (error) {
-      return err(DomainError.internal('復号化に失敗しました'));
+      return err(DomainError.internal("復号化に失敗しました"));
     }
   }
 }

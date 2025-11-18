@@ -3,8 +3,8 @@
 ## 原則：Supabaseクライアントのエラーハンドリングをneverthrowでラップ
 
 ```typescript
-import { ResultAsync, ok, err } from 'neverthrow';
-import { createClient } from '@supabase/supabase-js';
+import { ResultAsync, ok, err } from "neverthrow";
+import { createClient } from "@supabase/supabase-js";
 
 // infrastructure/repositories/OrderRepository.ts
 export class OrderRepository implements IOrderRepository {
@@ -13,7 +13,7 @@ export class OrderRepository implements IOrderRepository {
   save(order: Order): ResultAsync<Order, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('orders')
+        .from("orders")
         .insert({
           id: order.id,
           order_number: order.orderNumber,
@@ -24,50 +24,51 @@ export class OrderRepository implements IOrderRepository {
           gender: order.userInfo.gender,
           age_group: order.userInfo.ageGroup,
           status: order.status,
-          ordered_at: order.orderedAt
+          ordered_at: order.orderedAt,
         })
         .select()
         .single(),
       (error) => this.handleError(error)
-    ).andThen(result => {
+    ).andThen((result) => {
       if (result.error) {
         return err(this.handleError(result.error));
       }
 
       // 選択されたオプションの保存
-      const optionPromises = order.selectedOptions.map(option =>
-        this.supabase
-          .from('order_options')
-          .insert({
-            order_id: order.id,
-            option_group_id: option.optionGroupId,
-            selected_value: Array.isArray(option.selectedValue)
-              ? option.selectedValue.join(',')
-              : option.selectedValue
-          })
+      const optionPromises = order.selectedOptions.map((option) =>
+        this.supabase.from("order_options").insert({
+          order_id: order.id,
+          option_group_id: option.optionGroupId,
+          selected_value: Array.isArray(option.selectedValue)
+            ? option.selectedValue.join(",")
+            : option.selectedValue,
+        })
       );
 
-      return ResultAsync.fromPromise(
-        Promise.all(optionPromises),
-        (error) => this.handleError(error)
+      return ResultAsync.fromPromise(Promise.all(optionPromises), (error) =>
+        this.handleError(error)
       ).map(() => this.toDomainOrder(result.data));
     });
   }
 
-  findByOrderNumber(orderNumber: string): ResultAsync<Order | null, DomainError> {
+  findByOrderNumber(
+    orderNumber: string
+  ): ResultAsync<Order | null, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('orders')
-        .select(`
+        .from("orders")
+        .select(
+          `
           *,
           order_options (*)
-        `)
-        .eq('order_number', orderNumber)
+        `
+        )
+        .eq("order_number", orderNumber)
         .single(),
       (error) => this.handleError(error)
-    ).andThen(result => {
+    ).andThen((result) => {
       if (result.error) {
-        if (result.error.code === 'PGRST116') {
+        if (result.error.code === "PGRST116") {
           // データが見つからない場合
           return ok(null);
         }
@@ -83,19 +84,21 @@ export class OrderRepository implements IOrderRepository {
   ): ResultAsync<Order | null, DomainError> {
     return ResultAsync.fromPromise(
       this.supabase
-        .from('orders')
-        .select(`
+        .from("orders")
+        .select(
+          `
           *,
           order_options (*)
-        `)
-        .eq('user_id', userId)
-        .eq('menu_id', menuId)
-        .neq('status', 'CANCELLED')
+        `
+        )
+        .eq("user_id", userId)
+        .eq("menu_id", menuId)
+        .neq("status", "CANCELLED")
         .single(),
       (error) => this.handleError(error)
-    ).andThen(result => {
+    ).andThen((result) => {
       if (result.error) {
-        if (result.error.code === 'PGRST116') {
+        if (result.error.code === "PGRST116") {
           return ok(null);
         }
         return err(this.handleError(result.error));
@@ -105,12 +108,12 @@ export class OrderRepository implements IOrderRepository {
   }
 
   getNextSequence(date: Date): ResultAsync<number, DomainError> {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    const dateStr = format(date, "yyyy-MM-dd");
 
     return ResultAsync.fromPromise(
-      this.supabase.rpc('get_next_order_sequence', { order_date: dateStr }),
+      this.supabase.rpc("get_next_order_sequence", { order_date: dateStr }),
       (error) => this.handleError(error)
-    ).andThen(result => {
+    ).andThen((result) => {
       if (result.error) {
         return err(this.handleError(result.error));
       }
@@ -120,17 +123,19 @@ export class OrderRepository implements IOrderRepository {
 
   // ヘルパーメソッド
   private handleError(error: any): DomainError {
-    console.error('Repository error:', error);
+    console.error("Repository error:", error);
 
     // Supabaseのエラーコードに基づいてDomainErrorに変換
-    if (error?.code === '23505') {
+    if (error?.code === "23505") {
       return DomainError.duplicateOrder();
     }
-    if (error?.code === '23503') {
+    if (error?.code === "23503") {
       return DomainError.menuNotFound();
     }
 
-    return DomainError.internal(error?.message || 'データベースエラーが発生しました');
+    return DomainError.internal(
+      error?.message || "データベースエラーが発生しました"
+    );
   }
 
   private toDomainOrder(data: any): Order {
@@ -143,18 +148,19 @@ export class OrderRepository implements IOrderRepository {
         department: data.department,
         name: data.name,
         gender: data.gender as Gender,
-        ageGroup: data.age_group as AgeGroup
+        ageGroup: data.age_group as AgeGroup,
       },
-      selectedOptions: data.order_options?.map((opt: any) => ({
-        optionGroupId: opt.option_group_id,
-        selectedValue: opt.selected_value.includes(',')
-          ? opt.selected_value.split(',')
-          : opt.selected_value
-      })) || [],
+      selectedOptions:
+        data.order_options?.map((opt: any) => ({
+          optionGroupId: opt.option_group_id,
+          selectedValue: opt.selected_value.includes(",")
+            ? opt.selected_value.split(",")
+            : opt.selected_value,
+        })) || [],
       status: data.status as OrderStatus,
       orderedAt: new Date(data.ordered_at),
       modifiedAt: data.modified_at ? new Date(data.modified_at) : undefined,
-      cancelledAt: data.cancelled_at ? new Date(data.cancelled_at) : undefined
+      cancelledAt: data.cancelled_at ? new Date(data.cancelled_at) : undefined,
     };
   }
 }

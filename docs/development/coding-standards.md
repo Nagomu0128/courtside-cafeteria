@@ -39,12 +39,14 @@ This section provides Next.js-specific DDD implementation guidelines. For founda
 #### 1. Respect Layer Boundaries
 
 ✅ **DO:**
+
 - Domain layer NEVER imports from other layers
 - Application layer ONLY imports from Domain
 - Infrastructure implements Domain interfaces
 - Presentation uses Application layer (not Domain directly)
 
 ❌ **DON'T:**
+
 - Import Application/Infrastructure/Presentation in Domain
 - Import Infrastructure/Presentation in Application
 - Import Presentation in Infrastructure
@@ -55,8 +57,8 @@ This section provides Next.js-specific DDD implementation guidelines. For founda
 ```typescript
 // ✅ Good: Application imports Domain
 // src/application/cafeteria/use-cases/CreateOrderUseCase.ts
-import { Order } from '@/src/domain/cafeteria/entities/Order';
-import { IOrderRepository } from '@/src/domain/cafeteria/repositories/IOrderRepository';
+import { Order } from "@/src/domain/cafeteria/entities/Order";
+import { IOrderRepository } from "@/src/domain/cafeteria/repositories/IOrderRepository";
 
 export class CreateOrderUseCase {
   constructor(private orderRepository: IOrderRepository) {}
@@ -64,18 +66,20 @@ export class CreateOrderUseCase {
 
 // ❌ Bad: Domain imports Application
 // src/domain/cafeteria/entities/Order.ts
-import { CreateOrderDto } from '@/src/application/cafeteria/dtos/CreateOrderDto'; // WRONG!
+import { CreateOrderDto } from "@/src/application/cafeteria/dtos/CreateOrderDto"; // WRONG!
 ```
 
 #### 2. Use Ubiquitous Language
 
 ✅ **DO:**
+
 - Match business terminology in code
 - Class/method names reflect business concepts
 - Consistent naming across layers
 - Document business rules with comments
 
 ❌ **DON'T:**
+
 - Use technical jargon in domain layer
 - Generic names like `process()`, `handle()`, `doSomething()`
 - Abbreviations unless universally understood
@@ -99,11 +103,13 @@ class Menu {
 
 // ❌ Bad: Technical/vague terminology
 class Menu {
-  setFlag(value: boolean): void {  // What flag?
+  setFlag(value: boolean): void {
+    // What flag?
     this.flag = value;
   }
 
-  update(data: any): void {  // Too generic
+  update(data: any): void {
+    // Too generic
     this.data = data;
   }
 }
@@ -112,12 +118,14 @@ class Menu {
 #### 3. Enforce Invariants in Entities
 
 ✅ **DO:**
+
 - Business rules in entity methods
 - Validate in constructors (fail fast)
 - Maintain consistency in aggregates
 - Throw domain exceptions for rule violations
 
 ❌ **DON'T:**
+
 - Allow invalid state to exist
 - Validate outside of entities
 - Use setters without validation
@@ -153,11 +161,11 @@ export class Order {
   public items: any[];
 
   setStatus(status: string): void {
-    this.status = status;  // No validation
+    this.status = status; // No validation
   }
 
   setItems(items: any[]): void {
-    this.items = items;  // No validation
+    this.items = items; // No validation
   }
 }
 ```
@@ -165,12 +173,14 @@ export class Order {
 #### 4. Immutable Value Objects
 
 ✅ **DO:**
+
 - No setters in value objects
 - Validate in constructor
 - Equality by value, not reference
 - Make fields readonly
 
 ❌ **DON'T:**
+
 - Allow mutation after creation
 - Use identity comparison
 - Expose internal state
@@ -204,9 +214,10 @@ export class Email {
 
 // ❌ Bad: Mutable value object
 export class Email {
-  public value: string;  // Not readonly, can be mutated
+  public value: string; // Not readonly, can be mutated
 
-  setValue(value: string): void {  // Setter allows mutation
+  setValue(value: string): void {
+    // Setter allows mutation
     this.value = value;
   }
 }
@@ -215,12 +226,14 @@ export class Email {
 #### 5. Repository Pattern
 
 ✅ **DO:**
+
 - Interface in Domain layer
 - Implementation in Infrastructure layer
 - Return domain entities, not DB models
 - Collection-like interface
 
 ❌ **DON'T:**
+
 - Implement repositories in Application layer
 - Return database-specific types
 - Expose ORM details to domain
@@ -242,7 +255,7 @@ export class PrismaOrderRepository implements IOrderRepository {
 
   async findById(id: OrderId): Promise<Order | null> {
     const data = await this.prisma.order.findUnique({
-      where: { id: id.getValue() }
+      where: { id: id.getValue() },
     });
     return data ? this.toDomain(data) : null;
   }
@@ -254,7 +267,8 @@ export class PrismaOrderRepository implements IOrderRepository {
 
 // ❌ Bad: Repository in Application layer
 // src/application/cafeteria/repositories/OrderRepository.ts
-export class OrderRepository {  // WRONG LAYER!
+export class OrderRepository {
+  // WRONG LAYER!
   async findById(id: string): Promise<any> {
     return await prisma.order.findUnique({ where: { id } });
   }
@@ -264,11 +278,13 @@ export class OrderRepository {  // WRONG LAYER!
 #### 6. Dependency Injection
 
 ✅ **DO:**
+
 - Inject dependencies via constructor
 - Depend on interfaces, not implementations
 - Use DI in Presentation layer
 
 ❌ **DON'T:**
+
 - Create dependencies inside classes
 - Depend on concrete implementations
 - Use global state
@@ -279,8 +295,8 @@ export class OrderRepository {  // WRONG LAYER!
 // ✅ Good: Constructor injection with interfaces
 export class CreateOrderUseCase {
   constructor(
-    private orderRepository: IOrderRepository,  // Interface
-    private menuRepository: IMenuRepository      // Interface
+    private orderRepository: IOrderRepository, // Interface
+    private menuRepository: IMenuRepository // Interface
   ) {}
 
   async execute(dto: CreateOrderDto): Promise<OrderDto> {
@@ -291,14 +307,14 @@ export class CreateOrderUseCase {
 
 // Presentation layer - Inject concrete implementations
 const useCase = new CreateOrderUseCase(
-  new PrismaOrderRepository(prisma),  // Concrete implementation
+  new PrismaOrderRepository(prisma), // Concrete implementation
   new PrismaMenuRepository(prisma)
 );
 
 // ❌ Bad: Creating dependencies inside
 export class CreateOrderUseCase {
   async execute(dto: CreateOrderDto): Promise<OrderDto> {
-    const orderRepository = new PrismaOrderRepository();  // WRONG!
+    const orderRepository = new PrismaOrderRepository(); // WRONG!
     const menu = await orderRepository.findById(dto.menuId);
   }
 }
@@ -307,6 +323,7 @@ export class CreateOrderUseCase {
 ### Prohibited Practices
 
 ❌ **NEVER:**
+
 - Anemic domain models (entities with only getters/setters)
 - Business logic in controllers or API routes
 - Domain layer depending on Infrastructure
@@ -323,6 +340,7 @@ export class CreateOrderUseCase {
 ### General Rules
 
 ✅ **DO:**
+
 - Enable all strict mode checks
 - Use explicit types for function parameters
 - Define interfaces for object shapes
@@ -332,6 +350,7 @@ export class CreateOrderUseCase {
 - Use interfaces for Repository contracts (DDD)
 
 ❌ **DON'T:**
+
 - Use `any` type (use `unknown` or proper types)
 - Disable TypeScript errors with `@ts-ignore`
 - Use non-null assertions (`!`) without justification
@@ -374,12 +393,13 @@ interface User {
 }
 
 // ✅ Use type for unions, intersections, primitives
-type OrderStatus = 'pending' | 'completed' | 'cancelled';
+type OrderStatus = "pending" | "completed" | "cancelled";
 type ID = string | number;
 type UserWithTimestamps = User & { createdAt: Date; updatedAt: Date };
 
 // ❌ Don't use type for simple object shapes
-type User = {  // Prefer interface
+type User = {
+  // Prefer interface
   id: string;
   name: string;
 };
@@ -390,32 +410,32 @@ type User = {  // Prefer interface
 ```typescript
 // ✅ Good: Handle null/undefined explicitly
 function getUser(id: string): User | null {
-  const user = users.find(u => u.id === id);
+  const user = users.find((u) => u.id === id);
   return user ?? null;
 }
 
-const user = getUser('123');
+const user = getUser("123");
 if (user !== null) {
   console.log(user.name);
 }
 
 // ❌ Bad: Non-null assertion without check
-const user = getUser('123');
-console.log(user!.name);  // Dangerous!
+const user = getUser("123");
+console.log(user!.name); // Dangerous!
 ```
 
 ### Type Imports
 
 ```typescript
 // ✅ Good: Use type imports for type-only imports
-import type { Metadata } from 'next';
-import type { User } from './types';
+import type { Metadata } from "next";
+import type { User } from "./types";
 
 // Runtime import
-import { Button } from './Button';
+import { Button } from "./Button";
 
 // ❌ Bad: Regular import for types
-import { Metadata } from 'next';  // Runtime import for type
+import { Metadata } from "next"; // Runtime import for type
 ```
 
 ---
@@ -425,6 +445,7 @@ import { Metadata } from 'next';  // Runtime import for type
 ### Component Types
 
 ✅ **DO:**
+
 - Use Server Components by default (no "use client" needed)
 - Add "use client" only when needed (hooks, event handlers, browser APIs)
 - Destructure props in function parameters
@@ -433,6 +454,7 @@ import { Metadata } from 'next';  // Runtime import for type
 - Export metadata from pages/layouts for SEO
 
 ❌ **DON'T:**
+
 - Use `any` for props types
 - Mutate props directly
 - Create deeply nested component trees
@@ -547,6 +569,7 @@ export function Button(props: any) {  // No type safety
 ### General Rules
 
 ✅ **DO:**
+
 - Use Tailwind utility classes for styling
 - Follow mobile-first responsive design (`sm:`, `md:`, `lg:`)
 - Use dark mode classes (`dark:`)
@@ -554,6 +577,7 @@ export function Button(props: any) {  // No type safety
 - Keep class lists readable (break into multiple lines if needed)
 
 ❌ **DON'T:**
+
 - Write inline `style={}` unless absolutely necessary
 - Create custom CSS when Tailwind utility exists
 - Use arbitrary values excessively (e.g., `w-[347px]`)
@@ -616,21 +640,21 @@ export function Button(props: any) {  // No type safety
 
 ```typescript
 // Flexbox centering
-className="flex items-center justify-center"
+className = "flex items-center justify-center";
 
 // Grid layout
-className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
 
 // Spacing
-className="px-4 py-2"      // Padding
-className="mx-auto"         // Horizontal center
-className="space-y-4"       // Vertical spacing between children
+className = "px-4 py-2"; // Padding
+className = "mx-auto"; // Horizontal center
+className = "space-y-4"; // Vertical spacing between children
 
 // Typography
-className="text-lg font-medium leading-8"
+className = "text-lg font-medium leading-8";
 
 // Interactive states
-className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+className = "hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
 ```
 
 ---
@@ -722,6 +746,7 @@ export class Order {
 ### General Rules
 
 ✅ **DO:**
+
 - Run Prettier before committing code
 - Use `npm run lint:fix` to auto-fix linting issues and format all files
 - Follow Prettier's default configuration (no custom overrides unless necessary)
@@ -729,6 +754,7 @@ export class Order {
 - Integrate Prettier with your IDE for format-on-save
 
 ❌ **DON'T:**
+
 - Manually format code when Prettier can handle it
 - Commit unformatted code
 - Disable Prettier rules without team discussion
@@ -753,11 +779,13 @@ npx prettier --check "**/*.{ts,tsx}"
 ### IDE Integration
 
 **VS Code:**
+
 1. Install "Prettier - Code formatter" extension
 2. Enable "Format on Save" in settings
 3. Set Prettier as default formatter
 
 **Settings.json:**
+
 ```json
 {
   "editor.formatOnSave": true,
@@ -802,28 +830,20 @@ tests/
 
 ```typescript
 // tests/unit/domain/cafeteria/entities/Order.test.ts
-import { describe, it, expect } from 'vitest';
-import { Order } from '@/src/domain/cafeteria/entities/Order';
-import { OrderId } from '@/src/domain/cafeteria/value-objects/OrderId';
-import { InvalidOrderException } from '@/src/domain/cafeteria/exceptions/InvalidOrderException';
+import { describe, it, expect } from "vitest";
+import { Order } from "@/src/domain/cafeteria/entities/Order";
+import { OrderId } from "@/src/domain/cafeteria/value-objects/OrderId";
+import { InvalidOrderException } from "@/src/domain/cafeteria/exceptions/InvalidOrderException";
 
-describe('Order', () => {
-  it('should create a valid order', () => {
-    const order = new Order(
-      new OrderId('123'),
-      OrderStatus.PENDING,
-      []
-    );
+describe("Order", () => {
+  it("should create a valid order", () => {
+    const order = new Order(new OrderId("123"), OrderStatus.PENDING, []);
 
-    expect(order.getId().getValue()).toBe('123');
+    expect(order.getId().getValue()).toBe("123");
   });
 
-  it('should throw exception when adding item to completed order', () => {
-    const order = new Order(
-      new OrderId('123'),
-      OrderStatus.COMPLETED,
-      []
-    );
+  it("should throw exception when adding item to completed order", () => {
+    const order = new Order(new OrderId("123"), OrderStatus.COMPLETED, []);
 
     expect(() => {
       order.addItem(new OrderItem());
@@ -849,6 +869,7 @@ describe('Order', () => {
 ### Quick Checklist
 
 Before committing:
+
 - [ ] Code follows DDD layer rules
 - [ ] No layer dependency violations
 - [ ] TypeScript strict mode passes

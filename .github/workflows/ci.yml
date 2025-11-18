@@ -16,8 +16,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
 
   build:
@@ -27,7 +28,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
       - run: npm ci
       - run: npm run build
-

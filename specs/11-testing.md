@@ -3,11 +3,11 @@
 ## 原則：Result型を活用した予測可能なテスト
 
 ```typescript
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { ok, err } from 'neverthrow';
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { ok, err } from "neverthrow";
 
 // tests/services/OrderService.test.ts
-describe('OrderService', () => {
+describe("OrderService", () => {
   let orderService: OrderService;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockMenuRepository: jest.Mocked<IMenuRepository>;
@@ -34,7 +34,7 @@ describe('OrderService', () => {
     };
 
     mockEventBus = {
-      publish: jest.fn()
+      publish: jest.fn(),
     };
 
     orderService = new OrderService(
@@ -45,27 +45,27 @@ describe('OrderService', () => {
     );
   });
 
-  describe('createOrder', () => {
-    it('正常に注文を作成できる', async () => {
+  describe("createOrder", () => {
+    it("正常に注文を作成できる", async () => {
       // Arrange
       const input: CreateOrderInput = {
-        userId: 'user-123',
-        menuId: 'menu-456',
+        userId: "user-123",
+        menuId: "menu-456",
         userInfo: {
-          department: '営業部',
-          name: '山田太郎',
+          department: "営業部",
+          name: "山田太郎",
           gender: Gender.MALE,
-          ageGroup: AgeGroup.THIRTIES
+          ageGroup: AgeGroup.THIRTIES,
         },
-        selectedOptions: []
+        selectedOptions: [],
       };
 
       const mockMenu: Menu = {
-        id: 'menu-456',
-        name: '日替わり弁当',
+        id: "menu-456",
+        name: "日替わり弁当",
         price: Money.create(500).value,
-        availableDate: new Date('2024-01-20'),
-        orderDeadline: new Date('2024-01-18T17:00:00'),
+        availableDate: new Date("2024-01-20"),
+        orderDeadline: new Date("2024-01-18T17:00:00"),
         status: MenuStatus.ACTIVE,
         // ... その他のフィールド
       };
@@ -73,11 +73,13 @@ describe('OrderService', () => {
       mockMenuRepository.findById.mockResolvedValue(ok(mockMenu));
       mockOrderRepository.findByUserIdAndMenuId.mockResolvedValue(ok(null));
       mockOrderRepository.getNextSequence.mockResolvedValue(ok(1));
-      mockOrderRepository.save.mockResolvedValue(ok({
-        id: 'order-789',
-        orderNumber: '20240120-0001',
-        // ... その他のフィールド
-      } as Order));
+      mockOrderRepository.save.mockResolvedValue(
+        ok({
+          id: "order-789",
+          orderNumber: "20240120-0001",
+          // ... その他のフィールド
+        } as Order)
+      );
       mockUserRepository.saveProfile.mockResolvedValue(ok(undefined));
 
       // Act
@@ -86,13 +88,13 @@ describe('OrderService', () => {
       // Assert
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.orderNumber).toBe('20240120-0001');
-        expect(result.value.message).toBe('注文が確定しました');
+        expect(result.value.orderNumber).toBe("20240120-0001");
+        expect(result.value.message).toBe("注文が確定しました");
       }
       expect(mockEventBus.publish).toHaveBeenCalled();
     });
 
-    it('締切を過ぎている場合はエラーを返す', async () => {
+    it("締切を過ぎている場合はエラーを返す", async () => {
       // Arrange
       const input: CreateOrderInput = {
         // ... 入力データ
@@ -100,7 +102,7 @@ describe('OrderService', () => {
 
       const mockMenu: Menu = {
         // ... メニューデータ
-        orderDeadline: new Date('2020-01-01'), // 過去の日付
+        orderDeadline: new Date("2020-01-01"), // 過去の日付
       };
 
       mockMenuRepository.findById.mockResolvedValue(ok(mockMenu));
@@ -111,19 +113,21 @@ describe('OrderService', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.code).toBe('ORDER_DEADLINE_PASSED');
+        expect(result.error.code).toBe("ORDER_DEADLINE_PASSED");
       }
     });
 
-    it('既に注文済みの場合はエラーを返す', async () => {
+    it("既に注文済みの場合はエラーを返す", async () => {
       // Arrange
       const existingOrder: Order = {
         // ... 既存注文データ
-        status: OrderStatus.CONFIRMED
+        status: OrderStatus.CONFIRMED,
       };
 
       mockMenuRepository.findById.mockResolvedValue(ok(mockMenu));
-      mockOrderRepository.findByUserIdAndMenuId.mockResolvedValue(ok(existingOrder));
+      mockOrderRepository.findByUserIdAndMenuId.mockResolvedValue(
+        ok(existingOrder)
+      );
 
       // Act
       const result = await orderService.createOrder(input);
@@ -131,7 +135,7 @@ describe('OrderService', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.code).toBe('DUPLICATE_ORDER');
+        expect(result.error.code).toBe("DUPLICATE_ORDER");
       }
     });
   });

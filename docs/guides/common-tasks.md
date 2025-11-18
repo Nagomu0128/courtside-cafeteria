@@ -6,6 +6,7 @@
 ---
 
 **📖 Prerequisites:**
+
 - Read [`specs/01-architecture.md`](../../specs/01-architecture.md) for DDD architecture overview
 - Read [`specs/02-domain-model.md`](../../specs/02-domain-model.md) for domain model examples
 
@@ -38,8 +39,8 @@ touch src/domain/cafeteria/entities/Reservation.ts
 
 ```typescript
 // src/domain/cafeteria/entities/Reservation.ts
-import { ReservationId } from '../value-objects/ReservationId';
-import { ReservationStatus } from '../types/ReservationStatus';
+import { ReservationId } from "../value-objects/ReservationId";
+import { ReservationStatus } from "../types/ReservationStatus";
 
 export class Reservation {
   constructor(
@@ -57,7 +58,9 @@ export class Reservation {
 
   confirm(): void {
     if (this.status !== ReservationStatus.PENDING) {
-      throw new InvalidReservationException("Only pending reservations can be confirmed");
+      throw new InvalidReservationException(
+        "Only pending reservations can be confirmed"
+      );
     }
     this.status = ReservationStatus.CONFIRMED;
   }
@@ -70,8 +73,12 @@ export class Reservation {
   }
 
   // Getters
-  getId(): ReservationId { return this.id; }
-  getStatus(): ReservationStatus { return this.status; }
+  getId(): ReservationId {
+    return this.id;
+  }
+  getStatus(): ReservationStatus {
+    return this.status;
+  }
 }
 ```
 
@@ -81,7 +88,7 @@ export class Reservation {
 // src/domain/cafeteria/value-objects/ReservationId.ts
 export class ReservationId {
   constructor(private readonly value: string) {
-    if (!value || value.trim() === '') {
+    if (!value || value.trim() === "") {
       throw new Error("ReservationId cannot be empty");
     }
   }
@@ -100,8 +107,8 @@ export class ReservationId {
 
 ```typescript
 // src/domain/cafeteria/repositories/IReservationRepository.ts
-import { Reservation } from '../entities/Reservation';
-import { ReservationId } from '../value-objects/ReservationId';
+import { Reservation } from "../entities/Reservation";
+import { ReservationId } from "../value-objects/ReservationId";
 
 export interface IReservationRepository {
   findById(id: ReservationId): Promise<Reservation | null>;
@@ -115,10 +122,10 @@ export interface IReservationRepository {
 
 ```typescript
 // src/application/cafeteria/use-cases/reservations/CreateReservationUseCase.ts
-import { IReservationRepository } from '@/src/domain/cafeteria/repositories/IReservationRepository';
-import { Reservation } from '@/src/domain/cafeteria/entities/Reservation';
-import { CreateReservationDto } from '../../dtos/reservations/CreateReservationDto';
-import { ReservationDto } from '../../dtos/reservations/ReservationDto';
+import { IReservationRepository } from "@/src/domain/cafeteria/repositories/IReservationRepository";
+import { Reservation } from "@/src/domain/cafeteria/entities/Reservation";
+import { CreateReservationDto } from "../../dtos/reservations/CreateReservationDto";
+import { ReservationDto } from "../../dtos/reservations/ReservationDto";
 
 export class CreateReservationUseCase {
   constructor(private reservationRepository: IReservationRepository) {}
@@ -183,17 +190,17 @@ export class ReservationDto {
 
 ```typescript
 // src/infrastructure/persistence/prisma/repositories/PrismaReservationRepository.ts
-import { PrismaClient } from '@prisma/client';
-import { IReservationRepository } from '@/src/domain/cafeteria/repositories/IReservationRepository';
-import { Reservation } from '@/src/domain/cafeteria/entities/Reservation';
-import { ReservationId } from '@/src/domain/cafeteria/value-objects/ReservationId';
+import { PrismaClient } from "@prisma/client";
+import { IReservationRepository } from "@/src/domain/cafeteria/repositories/IReservationRepository";
+import { Reservation } from "@/src/domain/cafeteria/entities/Reservation";
+import { ReservationId } from "@/src/domain/cafeteria/value-objects/ReservationId";
 
 export class PrismaReservationRepository implements IReservationRepository {
   constructor(private prisma: PrismaClient) {}
 
   async findById(id: ReservationId): Promise<Reservation | null> {
     const data = await this.prisma.reservation.findUnique({
-      where: { id: id.getValue() }
+      where: { id: id.getValue() },
     });
     return data ? this.toDomain(data) : null;
   }
@@ -203,7 +210,7 @@ export class PrismaReservationRepository implements IReservationRepository {
     await this.prisma.reservation.upsert({
       where: { id: data.id },
       create: data,
-      update: data
+      update: data,
     });
   }
 
@@ -213,7 +220,7 @@ export class PrismaReservationRepository implements IReservationRepository {
       customerId: reservation.getCustomerId().getValue(),
       tableNumber: reservation.getTableNumber(),
       status: reservation.getStatus().toString(),
-      reservedAt: reservation.getReservedAt()
+      reservedAt: reservation.getReservedAt(),
     };
   }
 
@@ -233,10 +240,10 @@ export class PrismaReservationRepository implements IReservationRepository {
 
 ```typescript
 // app/api/reservations/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { CreateReservationUseCase } from '@/src/application/cafeteria/use-cases/reservations/CreateReservationUseCase';
-import { PrismaReservationRepository } from '@/src/infrastructure/persistence/prisma/repositories/PrismaReservationRepository';
-import { prisma } from '@/src/infrastructure/persistence/prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { CreateReservationUseCase } from "@/src/application/cafeteria/use-cases/reservations/CreateReservationUseCase";
+import { PrismaReservationRepository } from "@/src/infrastructure/persistence/prisma/repositories/PrismaReservationRepository";
+import { prisma } from "@/src/infrastructure/persistence/prisma/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -254,12 +261,8 @@ export async function POST(request: NextRequest) {
     const result = await useCase.execute(dto);
 
     return NextResponse.json(result, { status: 201 });
-
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
 ```
@@ -453,8 +456,8 @@ touch app/api/reservations/route.ts
 
 ```typescript
 // app/api/reservations/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { GetAllReservationsUseCase } from '@/src/application/cafeteria/use-cases/reservations/GetAllReservationsUseCase';
+import { NextRequest, NextResponse } from "next/server";
+import { GetAllReservationsUseCase } from "@/src/application/cafeteria/use-cases/reservations/GetAllReservationsUseCase";
 
 export async function GET(request: NextRequest) {
   try {
@@ -463,10 +466,9 @@ export async function GET(request: NextRequest) {
     const reservations = await useCase.execute();
 
     return NextResponse.json(reservations);
-
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch reservations' },
+      { error: "Failed to fetch reservations" },
       { status: 500 }
     );
   }
@@ -492,7 +494,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const reservation = await fetchReservation(params.id);
     return NextResponse.json(reservation);
   } catch (error) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 }
 
@@ -501,7 +503,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     await deleteReservation(params.id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }
 ```
@@ -536,6 +538,7 @@ import { Button } from '@/app/components/ui/button';
 ### Available Variants and Sizes
 
 **Button Variants:**
+
 - `default` - Primary button
 - `destructive` - Dangerous actions (delete, etc.)
 - `outline` - Secondary action
@@ -544,6 +547,7 @@ import { Button } from '@/app/components/ui/button';
 - `link` - Link-styled button
 
 **Button Sizes:**
+
 - `default` - Normal size
 - `sm` - Small
 - `lg` - Large
@@ -555,19 +559,16 @@ import { Button } from '@/app/components/ui/button';
 // app/components/ui/button.tsx
 // You can edit the generated file to add custom variants
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center...",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary...",
-        destructive: "bg-destructive...",
-        // Add your custom variant
-        custom: "bg-purple-500 text-white hover:bg-purple-600"
-      }
-    }
-  }
-);
+const buttonVariants = cva("inline-flex items-center justify-center...", {
+  variants: {
+    variant: {
+      default: "bg-primary...",
+      destructive: "bg-destructive...",
+      // Add your custom variant
+      custom: "bg-purple-500 text-white hover:bg-purple-600",
+    },
+  },
+});
 ```
 
 ---
@@ -581,6 +582,7 @@ npm run lint:fix
 ```
 
 This command:
+
 1. Runs ESLint with `--fix` flag
 2. Formats code with Prettier
 
@@ -606,6 +608,7 @@ npx prettier --check "**/*.{ts,tsx}"
 ### IDE Integration
 
 **VS Code:**
+
 1. Install "Prettier - Code formatter" extension
 2. Add to `.vscode/settings.json`:
 
@@ -703,21 +706,21 @@ npx prisma studio
 
 ```typescript
 // tailwind.config.ts
-import type { Config } from 'tailwindcss';
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   theme: {
     extend: {
       colors: {
-        'brand-blue': '#3b82f6',
-        'brand-purple': '#8b5cf6'
+        "brand-blue": "#3b82f6",
+        "brand-purple": "#8b5cf6",
       },
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem'
-      }
-    }
-  }
+        "18": "4.5rem",
+        "88": "22rem",
+      },
+    },
+  },
 };
 
 export default config;

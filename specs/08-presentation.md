@@ -3,8 +3,8 @@
 ## 原則：neverthrowのmatchによるパターンマッチング
 
 ```typescript
-import { Request, Response } from 'express';
-import { ResultAsync } from 'neverthrow';
+import { Request, Response } from "express";
+import { ResultAsync } from "neverthrow";
 
 // presentation/controllers/OrderController.ts
 export class OrderController {
@@ -14,15 +14,17 @@ export class OrderController {
   ) {}
 
   async createOrder(req: Request, res: Response): Promise<void> {
-    const sessionToken = req.headers['x-session-token'] as string;
+    const sessionToken = req.headers["x-session-token"] as string;
 
     // セッション検証とレート制限を組み合わせる
-    await this.securityMiddleware.validateSession(sessionToken)
-      .andThen(user =>
-        this.securityMiddleware.checkRateLimit(user.id, 'create_order')
+    await this.securityMiddleware
+      .validateSession(sessionToken)
+      .andThen((user) =>
+        this.securityMiddleware
+          .checkRateLimit(user.id, "create_order")
           .map(() => user)
       )
-      .andThen(user =>
+      .andThen((user) =>
         // 注文作成
         this.orderService.createOrder({
           userId: user.id,
@@ -31,9 +33,9 @@ export class OrderController {
             department: req.body.department,
             name: req.body.name,
             gender: req.body.gender,
-            ageGroup: req.body.ageGroup
+            ageGroup: req.body.ageGroup,
           },
-          selectedOptions: req.body.options
+          selectedOptions: req.body.options,
         })
       )
       .match(
@@ -43,8 +45,8 @@ export class OrderController {
             success: true,
             data: {
               orderNumber: result.orderNumber,
-              message: result.message
-            }
+              message: result.message,
+            },
           });
         },
         // エラー時
@@ -54,87 +56,35 @@ export class OrderController {
             error: {
               code: error.code,
               message: error.message,
-              details: error.details
-            }
+              details: error.details,
+            },
           });
         }
       );
   }
 
   async modifyOrder(req: Request, res: Response): Promise<void> {
-    const sessionToken = req.headers['x-session-token'] as string;
+    const sessionToken = req.headers["x-session-token"] as string;
 
-    await this.orderService.modifyOrder({
-      orderNumber: req.params.orderNumber,
-      sessionToken,
-      userInfo: {
-        department: req.body.department,
-        name: req.body.name,
-        gender: req.body.gender,
-        ageGroup: req.body.ageGroup
-      },
-      selectedOptions: req.body.options
-    })
-    .match(
-      (result) => {
-        res.json({
-          success: true,
-          data: {
-            message: result.message
-          }
-        });
-      },
-      (error) => {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-            details: error.details
-          }
-        });
-      }
-    );
-  }
-
-  async cancelOrder(req: Request, res: Response): Promise<void> {
-    const sessionToken = req.headers['x-session-token'] as string;
-
-    await this.orderService.cancelOrder({
-      orderNumber: req.params.orderNumber,
-      sessionToken
-    })
-    .match(
-      (result) => {
-        res.json({
-          success: true,
-          data: {
-            message: result.message
-          }
-        });
-      },
-      (error) => {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message
-          }
-        });
-      }
-    );
-  }
-
-  async getOrderHistory(req: Request, res: Response): Promise<void> {
-    const sessionToken = req.headers['x-session-token'] as string;
-
-    await this.securityMiddleware.validateSession(sessionToken)
-      .andThen(user => this.orderService.getOrderHistory(user.id))
+    await this.orderService
+      .modifyOrder({
+        orderNumber: req.params.orderNumber,
+        sessionToken,
+        userInfo: {
+          department: req.body.department,
+          name: req.body.name,
+          gender: req.body.gender,
+          ageGroup: req.body.ageGroup,
+        },
+        selectedOptions: req.body.options,
+      })
       .match(
-        (orders) => {
+        (result) => {
           res.json({
             success: true,
-            data: orders
+            data: {
+              message: result.message,
+            },
           });
         },
         (error) => {
@@ -142,8 +92,63 @@ export class OrderController {
             success: false,
             error: {
               code: error.code,
-              message: error.message
-            }
+              message: error.message,
+              details: error.details,
+            },
+          });
+        }
+      );
+  }
+
+  async cancelOrder(req: Request, res: Response): Promise<void> {
+    const sessionToken = req.headers["x-session-token"] as string;
+
+    await this.orderService
+      .cancelOrder({
+        orderNumber: req.params.orderNumber,
+        sessionToken,
+      })
+      .match(
+        (result) => {
+          res.json({
+            success: true,
+            data: {
+              message: result.message,
+            },
+          });
+        },
+        (error) => {
+          res.status(error.statusCode).json({
+            success: false,
+            error: {
+              code: error.code,
+              message: error.message,
+            },
+          });
+        }
+      );
+  }
+
+  async getOrderHistory(req: Request, res: Response): Promise<void> {
+    const sessionToken = req.headers["x-session-token"] as string;
+
+    await this.securityMiddleware
+      .validateSession(sessionToken)
+      .andThen((user) => this.orderService.getOrderHistory(user.id))
+      .match(
+        (orders) => {
+          res.json({
+            success: true,
+            data: orders,
+          });
+        },
+        (error) => {
+          res.status(error.statusCode).json({
+            success: false,
+            error: {
+              code: error.code,
+              message: error.message,
+            },
           });
         }
       );

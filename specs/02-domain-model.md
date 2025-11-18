@@ -3,12 +3,12 @@
 ## 3.1 エンティティ定義
 
 ```typescript
-import { Result, ok, err } from 'neverthrow';
+import { Result, ok, err } from "neverthrow";
 
 // domain/entities/User.ts
 export interface User {
-  id: string;  // UUID (匿名認証ID)
-  sessionToken: string;  // セッション管理用
+  id: string; // UUID (匿名認証ID)
+  sessionToken: string; // セッション管理用
   createdAt: Date;
   lastAccessedAt: Date;
 
@@ -29,9 +29,9 @@ export interface Menu {
   name: string;
   description: string;
   imageUrl: string;
-  price: Money;  // 値オブジェクト
-  availableDate: Date;  // 受け渡し日
-  orderDeadline: Date;  // 注文締切（前々日17時）
+  price: Money; // 値オブジェクト
+  availableDate: Date; // 受け渡し日
+  orderDeadline: Date; // 注文締切（前々日17時）
   maxQuantity?: number;
   status: MenuStatus;
   options: MenuOption[];
@@ -44,7 +44,7 @@ export interface Order {
   id: string;
   userId: string;
   menuId: string;
-  orderNumber: string;  // 変更・キャンセル用の注文番号
+  orderNumber: string; // 変更・キャンセル用の注文番号
   userInfo: OrderUserInfo;
   selectedOptions: SelectedOption[];
   status: OrderStatus;
@@ -73,7 +73,7 @@ export const createOrder = (
     status: OrderStatus.CONFIRMED,
     orderedAt: new Date(),
     modifiedAt: undefined,
-    cancelledAt: undefined
+    cancelledAt: undefined,
   };
 
   return ok(order);
@@ -91,10 +91,10 @@ export interface MenuOption {
 
 export interface OptionGroup {
   id: string;
-  name: string;  // "ご飯の種類"
-  type: OptionType;  // SELECT, RADIO, CHECKBOX
+  name: string; // "ご飯の種類"
+  type: OptionType; // SELECT, RADIO, CHECKBOX
   options: OptionItem[];
-  templateId?: string;  // テンプレート参照
+  templateId?: string; // テンプレート参照
 }
 
 export interface OptionItem {
@@ -105,70 +105,83 @@ export interface OptionItem {
 
 // domain/types/Enums.ts
 export enum Gender {
-  MALE = 'MALE',
-  FEMALE = 'FEMALE',
-  OTHER = 'OTHER'
+  MALE = "MALE",
+  FEMALE = "FEMALE",
+  OTHER = "OTHER",
 }
 
 export enum AgeGroup {
-  UNDER_20 = 'UNDER_20',
-  TWENTIES = '20-29',
-  THIRTIES = '30-39',
-  FORTIES = '40-49',
-  FIFTIES = '50-59',
-  OVER_60 = 'OVER_60'
+  UNDER_20 = "UNDER_20",
+  TWENTIES = "20-29",
+  THIRTIES = "30-39",
+  FORTIES = "40-49",
+  FIFTIES = "50-59",
+  OVER_60 = "OVER_60",
 }
 
 export enum MenuStatus {
-  DRAFT = 'DRAFT',
-  ACTIVE = 'ACTIVE',
-  CLOSED = 'CLOSED',
-  CANCELLED = 'CANCELLED'
+  DRAFT = "DRAFT",
+  ACTIVE = "ACTIVE",
+  CLOSED = "CLOSED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum OrderStatus {
-  CONFIRMED = 'CONFIRMED',
-  MODIFIED = 'MODIFIED',
-  CANCELLED = 'CANCELLED'
+  CONFIRMED = "CONFIRMED",
+  MODIFIED = "MODIFIED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum OptionType {
-  SELECT = 'SELECT',
-  RADIO = 'RADIO',
-  CHECKBOX = 'CHECKBOX'
+  SELECT = "SELECT",
+  RADIO = "RADIO",
+  CHECKBOX = "CHECKBOX",
 }
 ```
 
 ## 3.2 値オブジェクト
 
 ```typescript
-import { Result, ok, err } from 'neverthrow';
-import { format } from 'date-fns';
+import { Result, ok, err } from "neverthrow";
+import { format } from "date-fns";
 
 // domain/valueObjects/Money.ts
 export class Money {
   private constructor(
     private readonly amount: number,
-    private readonly currency: string = 'JPY'
+    private readonly currency: string = "JPY"
   ) {}
 
   // 原則：ファクトリーメソッドでバリデーション
-  static create(amount: number, currency: string = 'JPY'): Result<Money, DomainError> {
+  static create(
+    amount: number,
+    currency: string = "JPY"
+  ): Result<Money, DomainError> {
     if (amount < 0) {
-      return err(new DomainError('金額は0以上で設定してください', 'INVALID_AMOUNT'));
+      return err(
+        new DomainError("金額は0以上で設定してください", "INVALID_AMOUNT")
+      );
     }
-    if (!['JPY', 'USD', 'EUR'].includes(currency)) {
-      return err(new DomainError('サポートされていない通貨です', 'INVALID_AMOUNT'));
+    if (!["JPY", "USD", "EUR"].includes(currency)) {
+      return err(
+        new DomainError("サポートされていない通貨です", "INVALID_AMOUNT")
+      );
     }
     return ok(new Money(amount, currency));
   }
 
-  getValue(): number { return this.amount; }
-  getCurrency(): string { return this.currency; }
+  getValue(): number {
+    return this.amount;
+  }
+  getCurrency(): string {
+    return this.currency;
+  }
 
   add(other: Money): Result<Money, DomainError> {
     if (this.currency !== other.currency) {
-      return err(new DomainError('異なる通貨は加算できません', 'CURRENCY_MISMATCH'));
+      return err(
+        new DomainError("異なる通貨は加算できません", "CURRENCY_MISMATCH")
+      );
     }
     return Money.create(this.amount + other.amount, this.currency);
   }
@@ -189,23 +202,24 @@ export class OrderNumber {
   // 原則：バリデーションをResult型で表現
   static create(value: string): Result<OrderNumber, DomainError> {
     if (!this.validate(value)) {
-      return err(new DomainError(
-        '注文番号の形式が不正です',
-        'INVALID_ORDER_NUMBER'
-      ));
+      return err(
+        new DomainError("注文番号の形式が不正です", "INVALID_ORDER_NUMBER")
+      );
     }
     return ok(new OrderNumber(value));
   }
 
-  static generate(date: Date, sequence: number): Result<OrderNumber, DomainError> {
+  static generate(
+    date: Date,
+    sequence: number
+  ): Result<OrderNumber, DomainError> {
     if (sequence < 0 || sequence > 9999) {
-      return err(new DomainError(
-        'シーケンス番号が範囲外です',
-        'INVALID_ORDER_NUMBER'
-      ));
+      return err(
+        new DomainError("シーケンス番号が範囲外です", "INVALID_ORDER_NUMBER")
+      );
     }
-    const dateStr = format(date, 'yyyyMMdd');
-    const seq = sequence.toString().padStart(4, '0');
+    const dateStr = format(date, "yyyyMMdd");
+    const seq = sequence.toString().padStart(4, "0");
     return OrderNumber.create(`${dateStr}-${seq}`);
   }
 
@@ -213,8 +227,12 @@ export class OrderNumber {
     return /^\d{8}-\d{4}$/.test(value);
   }
 
-  getValue(): string { return this.value; }
-  toString(): string { return this.value; }
+  getValue(): string {
+    return this.value;
+  }
+  toString(): string {
+    return this.value;
+  }
 }
 
 // domain/valueObjects/OrderUserInfo.ts
@@ -228,6 +246,6 @@ export interface OrderUserInfo {
 // domain/valueObjects/SelectedOption.ts
 export interface SelectedOption {
   optionGroupId: string;
-  selectedValue: string | string[];  // CHECKBOXの場合は複数選択
+  selectedValue: string | string[]; // CHECKBOXの場合は複数選択
 }
 ```

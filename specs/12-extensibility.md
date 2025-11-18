@@ -3,7 +3,7 @@
 ## 原則：オープン・クローズド原則（OCP）とneverthrowによる合成可能な設計
 
 ```typescript
-import { Result, ResultAsync, ok, err } from 'neverthrow';
+import { Result, ResultAsync, ok, err } from "neverthrow";
 
 // domain/interfaces/IMenuOptionProvider.ts
 export interface IMenuOptionProvider {
@@ -20,18 +20,21 @@ export class AIOptionProvider implements IMenuOptionProvider {
   ) {}
 
   getOptions(menuId: string): ResultAsync<MenuOption[], DomainError> {
-    return this.menuRepository.findById(menuId)
-      .andThen(menu => {
+    return this.menuRepository
+      .findById(menuId)
+      .andThen((menu) => {
         if (!menu) return err(DomainError.menuNotFound());
         return ok(menu);
       })
-      .andThen(menu =>
+      .andThen((menu) =>
         // 在庫情報を取得
-        this.inventoryService.checkAvailability(menu.options)
-          .andThen(availableOptions =>
+        this.inventoryService
+          .checkAvailability(menu.options)
+          .andThen((availableOptions) =>
             // AIによる推奨オプション
-            this.aiService.getRecommendations(menuId, availableOptions)
-              .map(recommendations =>
+            this.aiService
+              .getRecommendations(menuId, availableOptions)
+              .map((recommendations) =>
                 this.mergeOptions(availableOptions, recommendations)
               )
           )
@@ -40,11 +43,10 @@ export class AIOptionProvider implements IMenuOptionProvider {
 
   validateOptions(options: SelectedOption[]): Result<void, DomainError> {
     // リアルタイムの在庫確認
-    return this.inventoryService.validateStock(options)
-      .match(
-        () => ok(undefined),
-        (error) => err(error)
-      );
+    return this.inventoryService.validateStock(options).match(
+      () => ok(undefined),
+      (error) => err(error)
+    );
   }
 
   private mergeOptions(
@@ -53,8 +55,10 @@ export class AIOptionProvider implements IMenuOptionProvider {
   ): MenuOption[] {
     // 重複を除いてマージ
     const merged = new Map<string, MenuOption>();
-    available.forEach(opt => merged.set(opt.id, opt));
-    recommended.forEach(opt => merged.set(opt.id, { ...opt, isRecommended: true }));
+    available.forEach((opt) => merged.set(opt.id, opt));
+    recommended.forEach((opt) =>
+      merged.set(opt.id, { ...opt, isRecommended: true })
+    );
     return Array.from(merged.values());
   }
 }
@@ -75,8 +79,9 @@ export class MultiChannelNotificationService implements INotificationService {
   ) {}
 
   notify(notification: Notification): ResultAsync<void, DomainError> {
-    return this.userPreferenceService.getPreferences(notification.recipient)
-      .andThen(preferences => {
+    return this.userPreferenceService
+      .getPreferences(notification.recipient)
+      .andThen((preferences) => {
         const notifications: ResultAsync<void, DomainError>[] = [];
 
         if (preferences.email) {
@@ -84,7 +89,7 @@ export class MultiChannelNotificationService implements INotificationService {
             this.emailService.send({
               to: preferences.email,
               subject: notification.subject,
-              body: notification.content
+              body: notification.content,
             })
           );
         }
@@ -93,7 +98,7 @@ export class MultiChannelNotificationService implements INotificationService {
           notifications.push(
             this.smsService.send({
               to: preferences.phone,
-              message: this.formatForSMS(notification.content)
+              message: this.formatForSMS(notification.content),
             })
           );
         }
@@ -103,7 +108,7 @@ export class MultiChannelNotificationService implements INotificationService {
             this.pushService.send({
               token: preferences.pushToken,
               title: notification.subject,
-              body: notification.content
+              body: notification.content,
             })
           );
         }
@@ -118,14 +123,12 @@ export class MultiChannelNotificationService implements INotificationService {
   private shouldSendSMS(type: NotificationType): boolean {
     return [
       NotificationType.ORDER_CONFIRMATION,
-      NotificationType.ORDER_CANCELLED
+      NotificationType.ORDER_CANCELLED,
     ].includes(type);
   }
 
   private formatForSMS(content: string): string {
-    return content.length > 140
-      ? content.substring(0, 137) + '...'
-      : content;
+    return content.length > 140 ? content.substring(0, 137) + "..." : content;
   }
 }
 ```

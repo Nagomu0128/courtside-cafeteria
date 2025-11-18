@@ -23,6 +23,7 @@
 This guide provides Next.js 16 component patterns for the Cafeteria Management System.
 
 **📖 For DDD architecture and domain model details, see:**
+
 - [`specs/01-architecture.md`](../../specs/01-architecture.md) - Architecture overview
 - [`specs/02-domain-model.md`](../../specs/02-domain-model.md) - Domain entities and value objects
 
@@ -498,10 +499,10 @@ const buttonVariants = cva(
 
 ```typescript
 // app/api/orders/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { GetAllOrdersUseCase } from '@/src/application/cafeteria/use-cases/orders/GetAllOrdersUseCase';
-import { PrismaOrderRepository } from '@/src/infrastructure/persistence/prisma/repositories/PrismaOrderRepository';
-import { prisma } from '@/src/infrastructure/persistence/prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { GetAllOrdersUseCase } from "@/src/application/cafeteria/use-cases/orders/GetAllOrdersUseCase";
+import { PrismaOrderRepository } from "@/src/infrastructure/persistence/prisma/repositories/PrismaOrderRepository";
+import { prisma } from "@/src/infrastructure/persistence/prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -514,11 +515,10 @@ export async function GET(request: NextRequest) {
 
     // Return response
     return NextResponse.json(orders, { status: 200 });
-
   } catch (error) {
-    console.error('Error fetching orders:', error);
+    console.error("Error fetching orders:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { error: "Failed to fetch orders" },
       { status: 500 }
     );
   }
@@ -529,10 +529,10 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 // app/api/orders/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { CreateOrderUseCase } from '@/src/application/cafeteria/use-cases/orders/CreateOrderUseCase';
-import { CreateOrderDto } from '@/src/application/cafeteria/dtos/orders/CreateOrderDto';
-import { ValidationException } from '@/src/application/shared/exceptions/ValidationException';
+import { NextRequest, NextResponse } from "next/server";
+import { CreateOrderUseCase } from "@/src/application/cafeteria/use-cases/orders/CreateOrderUseCase";
+import { CreateOrderDto } from "@/src/application/cafeteria/dtos/orders/CreateOrderDto";
+import { ValidationException } from "@/src/application/shared/exceptions/ValidationException";
 
 export async function POST(request: NextRequest) {
   try {
@@ -540,11 +540,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // 2. Create DTO
-    const dto = new CreateOrderDto(
-      body.menuId,
-      body.quantity,
-      body.customerId
-    );
+    const dto = new CreateOrderDto(body.menuId, body.quantity, body.customerId);
 
     // 3. Inject dependencies
     const orderRepository = new PrismaOrderRepository(prisma);
@@ -556,25 +552,18 @@ export async function POST(request: NextRequest) {
 
     // 5. Return response
     return NextResponse.json(result, { status: 201 });
-
   } catch (error) {
     if (error instanceof ValidationException) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     if (error instanceof NotFoundException) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
-    console.error('Error creating order:', error);
+    console.error("Error creating order:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -585,52 +574,41 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 // app/api/orders/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 interface RouteContext {
   params: { id: string };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteContext
-) {
+export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     const orderRepository = new PrismaOrderRepository(prisma);
     const useCase = new GetOrderByIdUseCase(orderRepository);
     const order = await useCase.execute(params.id);
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     return NextResponse.json(order);
-
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteContext
-) {
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
   try {
     const orderRepository = new PrismaOrderRepository(prisma);
     const useCase = new DeleteOrderUseCase(orderRepository);
     await useCase.execute(params.id);
 
     return NextResponse.json({ success: true }, { status: 200 });
-
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to delete order' },
+      { error: "Failed to delete order" },
       { status: 500 }
     );
   }
@@ -645,16 +623,16 @@ export async function DELETE(
 
 ```typescript
 // app/actions/createOrder.ts
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { CreateOrderUseCase } from '@/src/application/cafeteria/use-cases/orders/CreateOrderUseCase';
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { CreateOrderUseCase } from "@/src/application/cafeteria/use-cases/orders/CreateOrderUseCase";
 
 export async function createOrder(formData: FormData) {
-  const menuId = formData.get('menuId') as string;
-  const quantity = parseInt(formData.get('quantity') as string);
-  const customerId = formData.get('customerId') as string;
+  const menuId = formData.get("menuId") as string;
+  const quantity = parseInt(formData.get("quantity") as string);
+  const customerId = formData.get("customerId") as string;
 
   try {
     const orderRepository = new PrismaOrderRepository(prisma);
@@ -664,12 +642,11 @@ export async function createOrder(formData: FormData) {
     const dto = new CreateOrderDto(menuId, quantity, customerId);
     const result = await useCase.execute(dto);
 
-    revalidatePath('/orders');  // Revalidate cache
-    redirect(`/orders/${result.id}`);  // Redirect to order page
-
+    revalidatePath("/orders"); // Revalidate cache
+    redirect(`/orders/${result.id}`); // Redirect to order page
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : 'Failed to create order'
+      error: error instanceof Error ? error.message : "Failed to create order",
     };
   }
 }
@@ -761,15 +738,15 @@ async function OrderList() {
 
 ### Quick Reference
 
-| Pattern | Use When | Example |
-|---------|----------|---------|
-| **Server Component** | Default, data fetching, SEO | `app/orders/page.tsx` |
-| **Client Component** | Hooks, events, browser APIs | `OrderFilters.tsx` |
-| **Layout** | Shared UI across routes | `app/(dashboard)/layout.tsx` |
-| **shadcn/ui** | Pre-built UI components | `<Button>`, `<Card>` |
-| **API Route** | REST API endpoints | `app/api/orders/route.ts` |
-| **Server Action** | Form submissions | `createOrder()` |
-| **Data Fetching** | Load data in Server Components | `await fetchOrders()` |
+| Pattern              | Use When                       | Example                      |
+| -------------------- | ------------------------------ | ---------------------------- |
+| **Server Component** | Default, data fetching, SEO    | `app/orders/page.tsx`        |
+| **Client Component** | Hooks, events, browser APIs    | `OrderFilters.tsx`           |
+| **Layout**           | Shared UI across routes        | `app/(dashboard)/layout.tsx` |
+| **shadcn/ui**        | Pre-built UI components        | `<Button>`, `<Card>`         |
+| **API Route**        | REST API endpoints             | `app/api/orders/route.ts`    |
+| **Server Action**    | Form submissions               | `createOrder()`              |
+| **Data Fetching**    | Load data in Server Components | `await fetchOrders()`        |
 
 ### Best Practices
 

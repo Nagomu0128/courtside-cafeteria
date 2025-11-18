@@ -3,13 +3,15 @@
 ## 原則：依存性逆転原則（DIP）とneverthrowのResultAsyncによる非同期エラーハンドリング
 
 ```typescript
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync } from "neverthrow";
 
 // domain/repositories/IOrderRepository.ts
 export interface IOrderRepository {
   save(order: Order): ResultAsync<Order, DomainError>;
   findById(id: string): ResultAsync<Order | null, DomainError>;
-  findByOrderNumber(orderNumber: string): ResultAsync<Order | null, DomainError>;
+  findByOrderNumber(
+    orderNumber: string
+  ): ResultAsync<Order | null, DomainError>;
   findByUserIdAndMenuId(
     userId: string,
     menuId: string
@@ -58,8 +60,12 @@ export interface IUserRepository {
 export interface IOptionTemplateRepository {
   findAll(): ResultAsync<OptionGroupTemplate[], DomainError>;
   findById(id: string): ResultAsync<OptionGroupTemplate | null, DomainError>;
-  save(template: OptionGroupTemplate): ResultAsync<OptionGroupTemplate, DomainError>;
-  update(template: OptionGroupTemplate): ResultAsync<OptionGroupTemplate, DomainError>;
+  save(
+    template: OptionGroupTemplate
+  ): ResultAsync<OptionGroupTemplate, DomainError>;
+  update(
+    template: OptionGroupTemplate
+  ): ResultAsync<OptionGroupTemplate, DomainError>;
   delete(id: string): ResultAsync<void, DomainError>;
 }
 
@@ -68,7 +74,7 @@ export interface PaginationOptions {
   limit: number;
   offset: number;
   orderBy?: string;
-  orderDirection?: 'ASC' | 'DESC';
+  orderDirection?: "ASC" | "DESC";
 }
 
 export interface FilterOptions {
