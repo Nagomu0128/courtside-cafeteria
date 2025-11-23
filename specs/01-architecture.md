@@ -13,7 +13,13 @@
 ├── Domain Layer        // ビジネスロジック・エンティティ
 ├── Application Layer   // ユースケース・サービス
 ├── Infrastructure Layer // DB・外部サービス実装
+├── Domain Layer        // ビジネスロジック・エンティティ
+├── Application Layer   // ユースケース・サービス
+├── Infrastructure Layer // DB・外部サービス実装
 └── Presentation Layer  // UI・コントローラー
+    ├── (public)        // 一般ユーザー用（匿名認証）
+    └── (auth)          // 認証ルートグループ
+        └── admin       // 管理者用（パスワード認証）
 ```
 
 ## 依存パッケージ

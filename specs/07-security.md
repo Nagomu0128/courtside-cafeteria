@@ -231,4 +231,52 @@ export interface EncryptedData {
   iv: string;
   authTag: string;
 }
+
+export interface AdminAuthConfig {
+  passwordHash: string;
+  salt: string;
+  sessionSecret: string;
+}
+
+// infrastructure/security/AdminAuthService.ts
+export class AdminAuthService {
+  constructor(private config: AdminAuthConfig) {}
+
+  /**
+   * 管理者ログイン認証
+   * 環境変数のハッシュ値と照合
+   */
+  authenticate(password: string): Result<void, DomainError> {
+    try {
+      // 入力パスワード + ソルト でハッシュ化
+      const hash = crypto
+        .createHash("sha256")
+        .update(password + this.config.salt)
+        .digest("hex");
+
+      // 環境変数のハッシュ値と比較（タイミング攻撃対策のためtimingSafeEqual推奨だが、ハッシュ比較なら文字列比較でも可）
+      if (hash !== this.config.passwordHash) {
+        return err(DomainError.unauthorized("パスワードが正しくありません"));
+      }
+
+      return ok(undefined);
+    } catch (error) {
+      return err(DomainError.internal("認証処理中にエラーが発生しました"));
+    }
+  }
+
+  /**
+   * 管理者セッショントークンの生成
+   * JWTなどを使用してステートレスに管理、またはRedis等で管理
+   */
+  createSession(): Result<string, DomainError> {
+    try {
+      // 簡易実装：ランダムなセッショントークン
+      const token = crypto.randomBytes(32).toString("hex");
+      return ok(token);
+    } catch (error) {
+      return err(DomainError.internal("セッション生成に失敗しました"));
+    }
+  }
+}
 ```
