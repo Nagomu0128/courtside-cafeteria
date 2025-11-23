@@ -9,9 +9,6 @@ import { ResultAsync } from "neverthrow";
 export interface IOrderRepository {
   save(order: Order): ResultAsync<Order, DomainError>;
   findById(id: string): ResultAsync<Order | null, DomainError>;
-  findByOrderNumber(
-    orderNumber: string
-  ): ResultAsync<Order | null, DomainError>;
   findByUserIdAndMenuId(
     userId: string,
     menuId: string

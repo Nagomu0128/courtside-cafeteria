@@ -1,189 +1,175 @@
-# 11. データベーススキーマ
+# 11. データベーススキーマ (Firestore)
 
-## 原則：正規化とパフォーマンスのバランス
+## 原則：NoSQLドキュメント設計
 
-```sql
--- ユーザー（匿名認証）
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_token VARCHAR(255) UNIQUE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+Firestoreを使用するため、リレーショナルモデルではなく、読み取り頻度と書き込み頻度を考慮したドキュメント指向モデルを採用します。
 
--- ユーザープロファイル（原則：個人情報の分離）
-CREATE TABLE user_profiles (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  department VARCHAR(100),
-  name VARCHAR(100),
-  gender VARCHAR(20),
-  age_group VARCHAR(20),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+### コレクション構造
 
--- メニュー
-CREATE TABLE menus (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(200) NOT NULL,
-  description TEXT,
-  image_url VARCHAR(500),
-  price DECIMAL(10, 2) NOT NULL,
-  available_date DATE NOT NULL,
-  order_deadline TIMESTAMP WITH TIME ZONE NOT NULL,
-  max_quantity INTEGER,
-  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+```
+/ (root)
+├── users (collection)
+│   └── {userId} (document)
+│       ├── createdAt: Timestamp
+│       ├── lastAccessedAt: Timestamp
+│       ├── isAnonymous: boolean
+│       ├── profile (map field)
+│       │   ├── department: string
+│       │   ├── name: string
+│       │   ├── gender: string
+│       │   └── ageGroup: string
+│       │
+│       └── orders (sub-collection) ← ユーザー注文一覧用（高速取得）
+│           └── {orderId} (document)
+│               ├── orderNumber: string
+│               ├── menuId: string
+│               ├── menuName: string (非正規化)
+│               ├── status: string
+│               └── orderedAt: Timestamp
+│
+├── menus (collection)
+│   └── {menuId} (document)
+│       ├── name: string
+│       ├── description: string
+│       ├── imageUrl: string (Firebase Storage URL)
+│       ├── price: number
+│       ├── availableDate: Timestamp
+│       ├── orderDeadline: Timestamp
+│       ├── maxQuantity: number
+│       ├── status: string ('ACTIVE' | 'CLOSED' | 'DRAFT')
+│       └── options (array of maps)
+│           ├── name: string
+│           ├── type: string
+│           └── items: array
+│
+├── orders (collection) ← 管理者用・全注文管理（正規化データ）
+│   └── {orderId} (document)
+│       ├── orderNumber: string (ユーザー表示用)
+│       ├── userId: string (Reference)
+│       ├── menuId: string (Reference)
+│       ├── status: string ('CONFIRMED' | 'CANCELLED')
+│       ├── orderedAt: Timestamp
+│       ├── userInfo: map
+│       │   ├── department: string
+│       │   ├── name: string
+│       │   └── ...
+│       └── selectedOptions: array of maps
+│
+├── counters (collection) - 注文番号採番用
+│   └── orderSequence_{YYYYMMDD} (document)
+│       └── current: number
+│
+└── system (collection)
+    └── optionTemplates (document)
+        └── templates: array
+```
 
-  CONSTRAINT check_deadline_before_available CHECK (order_deadline < available_date),
-  CONSTRAINT check_price_positive CHECK (price >= 0),
-  CONSTRAINT check_max_quantity_positive CHECK (max_quantity IS NULL OR max_quantity > 0)
-);
+### インデックス設計
 
--- インデックス
-CREATE INDEX idx_menus_available_date ON menus(available_date);
-CREATE INDEX idx_menus_status ON menus(status);
-CREATE INDEX idx_menus_order_deadline ON menus(order_deadline);
+Firestoreの複合インデックス設定（`firestore.indexes.json`）
 
--- 注文
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_number VARCHAR(20) UNIQUE NOT NULL,
-  user_id UUID NOT NULL REFERENCES users(id),
-  menu_id UUID NOT NULL REFERENCES menus(id),
-  department VARCHAR(100) NOT NULL,
-  name VARCHAR(100) NOT NULL,
-  gender VARCHAR(20) NOT NULL,
-  age_group VARCHAR(20) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
-  ordered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  modified_at TIMESTAMP WITH TIME ZONE,
-  cancelled_at TIMESTAMP WITH TIME ZONE,
+```json
+{
+  "indexes": [
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "menuId", "order": "ASCENDING" },
+        { "fieldPath": "orderedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "orderedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "menus",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "availableDate", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ]
+}
+```
 
-  CONSTRAINT check_status CHECK (status IN ('CONFIRMED', 'MODIFIED', 'CANCELLED')),
-  CONSTRAINT check_gender CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
-  CONSTRAINT unique_active_order EXCLUDE USING btree (user_id WITH =, menu_id WITH =)
-    WHERE (status != 'CANCELLED')
-);
+### セキュリティルール (firestore.rules)
 
--- インデックス
-CREATE INDEX idx_orders_order_number ON orders(order_number);
-CREATE INDEX idx_orders_user_menu ON orders(user_id, menu_id);
-CREATE INDEX idx_orders_menu_status ON orders(menu_id, status);
-CREATE INDEX idx_orders_ordered_at ON orders(ordered_at DESC);
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ユーザー関数
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
 
--- オプショングループテンプレート
-CREATE TABLE option_group_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(100) NOT NULL UNIQUE,
-  type VARCHAR(20) NOT NULL,
-  is_system BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    // Users: 本人のみ読み書き可、管理者は読み取り可
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      allow read: if isAdmin();
 
-  CONSTRAINT check_type CHECK (type IN ('SELECT', 'RADIO', 'CHECKBOX'))
-);
+      // Users > Orders サブコレクション: 本人のみアクセス可
+      match /orders/{orderId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // サーバーサイドからのみ書き込み
+      }
+    }
 
--- オプションアイテムテンプレート
-CREATE TABLE option_item_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_template_id UUID NOT NULL REFERENCES option_group_templates(id) ON DELETE CASCADE,
-  value VARCHAR(100) NOT NULL,
-  label VARCHAR(100) NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
+    // Menus: 誰でも読み取り可、管理者は書き込み可
+    match /menus/{menuId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
 
-  CONSTRAINT unique_template_value UNIQUE (group_template_id, value)
-);
+    // Orders: 本人は作成・読み取り・更新可、管理者は全権限
+    match /orders/{orderId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if (isOwner(resource.data.userId) && resource.data.status != 'CANCELLED') || isAdmin();
+    }
+    
+    // Counters: 認証済みユーザーのみインクリメント可（トランザクション必須）
+    match /counters/{counterId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
+```
 
--- メニューオプション設定
-CREATE TABLE menu_option_groups (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  menu_id UUID NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
-  name VARCHAR(100) NOT NULL,
-  type VARCHAR(20) NOT NULL,
-  is_required BOOLEAN DEFAULT FALSE,
-  template_id UUID REFERENCES option_group_templates(id),
-  sort_order INTEGER NOT NULL DEFAULT 0,
+### データ同期方針
 
-  CONSTRAINT check_type CHECK (type IN ('SELECT', 'RADIO', 'CHECKBOX'))
-);
+`/orders` と `/users/{userId}/orders` の二重書き込みについて：
 
--- メニューオプションアイテム
-CREATE TABLE menu_option_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  option_group_id UUID NOT NULL REFERENCES menu_option_groups(id) ON DELETE CASCADE,
-  value VARCHAR(100) NOT NULL,
-  label VARCHAR(100) NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
+| コレクション | 用途 | データ内容 |
+|-------------|------|-----------|
+| `/orders/{orderId}` | 管理者用（全注文管理） | 完全な注文データ |
+| `/users/{userId}/orders/{orderId}` | ユーザー用（自分の注文一覧） | 表示用に非正規化した軽量データ |
 
-  CONSTRAINT unique_option_value UNIQUE (option_group_id, value)
-);
+**書き込みフロー：**
+1. 注文作成時、サーバーサイドで両方に書き込む（バッチ書き込み）
+2. `/users/{userId}/orders` は読み取り専用（クライアントからの書き込み禁止）
+3. ステータス更新時も両方を更新
 
--- 選択された注文オプション
-CREATE TABLE order_options (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  option_group_id UUID NOT NULL REFERENCES menu_option_groups(id),
-  selected_value VARCHAR(255) NOT NULL, -- 複数選択の場合はカンマ区切り
-
-  CONSTRAINT unique_order_option UNIQUE (order_id, option_group_id)
-);
-
--- インデックス
-CREATE INDEX idx_order_options_order ON order_options(order_id);
-
--- 注文番号シーケンス管理（ストアドファンクション）
-CREATE OR REPLACE FUNCTION get_next_order_sequence(order_date DATE)
-RETURNS INTEGER AS $$
-DECLARE
-  next_seq INTEGER;
-BEGIN
-  INSERT INTO order_sequences (date, last_sequence)
-  VALUES (order_date, 1)
-  ON CONFLICT (date) DO UPDATE
-  SET last_sequence = order_sequences.last_sequence + 1
-  RETURNING last_sequence INTO next_seq;
-
-  RETURN next_seq;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TABLE order_sequences (
-  date DATE PRIMARY KEY,
-  last_sequence INTEGER NOT NULL DEFAULT 0
-);
-
--- RLS (Row Level Security) ポリシー
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE order_options ENABLE ROW LEVEL SECURITY;
-
--- ユーザーは自分のデータのみアクセス可能
-CREATE POLICY users_own_orders ON orders
-  FOR ALL
-  USING (auth.uid()::TEXT = user_id::TEXT);
-
-CREATE POLICY users_own_profiles ON user_profiles
-  FOR ALL
-  USING (auth.uid()::TEXT = user_id::TEXT);
-
-CREATE POLICY users_own_order_options ON order_options
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM orders
-      WHERE orders.id = order_options.order_id
-      AND orders.user_id::TEXT = auth.uid()::TEXT
-    )
-  );
-
--- 管理者は全データアクセス可能
-CREATE POLICY admin_all_access_orders ON orders
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.uid() = id
-      AND raw_user_meta_data->>'role' = 'admin'
-    )
-  );
+```typescript
+// 例: バッチ書き込み
+const batch = writeBatch(db);
+batch.set(doc(db, "orders", orderId), fullOrderData);
+batch.set(doc(db, "users", userId, "orders", orderId), summaryData);
+await batch.commit();
 ```

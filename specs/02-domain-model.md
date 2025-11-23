@@ -9,8 +9,9 @@ import { Result, ok, err } from "neverthrow";
 export interface User {
   id: string; // UUID (匿名認証ID)
   sessionToken: string; // セッション管理用
-  createdAt: Date;
-  lastAccessedAt: Date;
+  created_at: Date;
+  updated_at: Date;
+  last_accessed_at: Date;
 
   // 原則：値オブジェクトパターンで個人情報を管理
   profile?: UserProfile;
@@ -20,7 +21,7 @@ export interface UserProfile {
   department: string;
   name: string;
   gender: Gender;
-  ageGroup: AgeGroup;
+  age_group: AgeGroup;
 }
 
 // domain/entities/Menu.ts
@@ -28,15 +29,15 @@ export interface Menu {
   id: string;
   name: string;
   description: string;
-  imageUrl: string;
+  image_url: string;
   price: Money; // 値オブジェクト
-  availableDate: Date; // 受け渡し日
-  orderDeadline: Date; // 注文締切（前々日17時）
-  maxQuantity?: number;
+  available_date: Date; // 受け渡し日
+  order_deadline: Date; // 注文締切（前々日17時）
+  max_quantity?: number;
   status: MenuStatus;
   options: MenuOption[];
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 // domain/entities/Order.ts
@@ -44,13 +45,13 @@ export interface Order {
   id: string;
   userId: string;
   menuId: string;
-  orderNumber: string; // 変更・キャンセル用の注文番号
+  orderNumber: string; // ユーザー表示用の注文番号（例: 20241123-0001）
   userInfo: OrderUserInfo;
   selectedOptions: SelectedOption[];
   status: OrderStatus;
-  orderedAt: Date;
-  modifiedAt?: Date;
-  cancelledAt?: Date;
+  ordered_at: Date;
+  modified_at?: Date;
+  cancelled_at?: Date;
 }
 
 // Orderのファクトリー関数（原則：不変性とバリデーション）
@@ -71,9 +72,9 @@ export const createOrder = (
     userInfo: params.userInfo,
     selectedOptions: params.selectedOptions,
     status: OrderStatus.CONFIRMED,
-    orderedAt: new Date(),
-    modifiedAt: undefined,
-    cancelledAt: undefined,
+    ordered_at: new Date(),
+    modified_at: undefined,
+    cancelled_at: undefined,
   };
 
   return ok(order);

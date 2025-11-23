@@ -42,7 +42,7 @@
 ### 4. インフラストラクチャ層
 
 - [05. インフラストラクチャ層実装](./05-infrastructure.md)
-  - Supabaseリポジトリ実装
+  - Firestoreリポジトリ実装
   - データベースアクセス層
 
 - [10. データベーススキーマ](./10-database-schema.md)
@@ -93,7 +93,9 @@
 
 - **TypeScript** - 型安全な開発
 - **neverthrow** - 関数型エラーハンドリング
-- **Supabase** - バックエンドサービス
+- **Firebase** - BaaS (Auth, Firestore, Storage)
+- **Firebase App Hosting** - ホスティング
+- **Cloud Run** - ロギング・バックエンド実行環境
 - **Zod** - バリデーションライブラリ
 
 ### アーキテクチャパターン
@@ -101,7 +103,7 @@
 - **DDD (Domain-Driven Design)** - ドメイン駆動設計
 - **レイヤードアーキテクチャ** - 責任の分離
 - **Railway Oriented Programming** - 型安全なエラーハンドリング
-- **Repository Pattern** - データアクセスの抽象化
+- **Repository Pattern** - データアクセスの抽象化 (Firestoreへのアクセスを隠蔽)
 
 ## 設計原則
 

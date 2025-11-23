@@ -1,282 +1,108 @@
-# 8. セキュリティ仕様（neverthrow版）
+# 8. セキュリティ仕様 (Firebase Auth)
 
-## 原則：最小権限の原則、深層防御、neverthrowによる安全なエラーハンドリング
+## Firebase SDK 使用方針
+
+### 原則：Admin SDKは最低限の特権操作のみに使用
+
+| 操作 | 使用SDK | 理由 |
+|------|---------|------|
+| IDトークン検証 | Admin SDK | サーバーサイドでのトークン検証に必要 |
+| カスタムクレーム付与 | Admin SDK | 管理者権限付与はAdmin SDKでのみ可能 |
+| Firestore CRUD | Client SDK | セキュリティルールで保護、Admin不要 |
+| Storage アップロード | Client SDK | セキュリティルールで保護、Admin不要 |
+
+**Admin SDKを使用する場所（限定）：**
+- `AdminAuthService` - 管理者認証のみ
+
+**Client SDKを使用する場所：**
+- `FirestoreOrderRepository` - 注文データ操作
+- `FirestoreMenuRepository` - メニューデータ操作
+- `FirebaseStorageService` - 画像アップロード
+
+## 認証方式
+
+### 1. ユーザー認証: Firebase Anonymous Auth
+- **匿名認証**: 初回アクセス時はFirebaseの匿名認証を使用し、UIDを発行します。
+- **プロファイル永続化**: 2回目以降の注文時、入力された個人情報（部署、氏名など）をFirestoreの `users/{uid}` ドキュメントに保存し、次回以降の入力を省略可能にします。
+- **セッション管理**: Firebase Authのトークン（ID Token）を使用します。
+
+### 2. 管理者認証: Custom Claims
+- **認証フロー**:
+  1. 管理者用ログイン画面でパスワードを入力。
+  2. サーバーサイド（Cloud Functions または Next.js API）でパスワードハッシュを検証。
+  3. 検証成功時、対象のUID（または管理者用UID）に対して `admin: true` のカスタムクレームを付与。
+  4. クライアントサイドでトークンをリフレッシュし、管理者権限を取得。
+
+## 実装イメージ
+
+### 管理者ログイン (Server Action / API)
 
 ```typescript
-import { Result, ResultAsync, ok, err } from "neverthrow";
-import * as crypto from "crypto";
+import { auth } from "firebase-admin";
+import { ResultAsync, ok, err } from "neverthrow";
 
-// infrastructure/security/SecurityMiddleware.ts
-export class SecurityMiddleware {
-  constructor(
-    private userRepository: IUserRepository,
-    private config: SecurityConfig
-  ) {}
+export class AdminAuthService {
+  // パスワード検証とカスタムクレーム付与
+  async loginAdmin(idToken: string, passwordInput: string): Promise<Result<void, DomainError>> {
+    // 1. IDトークンの検証
+    const decodedToken = await auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
 
-  // セッショントークン検証
-  validateSession(token: string): ResultAsync<User, DomainError> {
-    // 原則：トークンの有効期限チェック
-    if (!token || token.length < 32) {
-      return ResultAsync.fromSafePromise(
-        Promise.resolve(err(DomainError.unauthorized("無効なトークンです")))
-      );
+    // 2. パスワード検証 (環境変数のハッシュと比較)
+    // 実際にはソルト付きハッシュなどで検証
+    if (!this.verifyPassword(passwordInput)) {
+      return err(DomainError.unauthorized("パスワードが間違っています"));
     }
 
-    return this.userRepository
-      .findBySessionToken(token)
-      .andThen((user) => {
-        if (!user) {
-          return err(DomainError.unauthorized("セッションが見つかりません"));
-        }
-
-        const lastAccess = new Date(user.lastAccessedAt);
-        const now = new Date();
-        const hoursSinceLastAccess =
-          (now.getTime() - lastAccess.getTime()) / (1000 * 60 * 60);
-
-        if (hoursSinceLastAccess > this.config.sessionTimeoutHours) {
-          return err(
-            new DomainError(
-              "セッションの有効期限が切れました",
-              "SESSION_EXPIRED"
-            )
-          );
-        }
-
-        return ok(user);
-      })
-      .andThen((user) =>
-        // アクセス時刻更新（エラーは無視）
-        this.userRepository
-          .updateLastAccessed(user.id)
-          .map(() => user)
-          .orElse(() => ok(user))
-      );
-  }
-
-  // レート制限
-  checkRateLimit(
-    userId: string,
-    action: string
-  ): ResultAsync<void, DomainError> {
-    const key = `rate_limit:${userId}:${action}`;
-    const limit = this.config.rateLimits[action] || 100;
-    const window = 3600; // 1時間
-
-    return this.getActionCount(key, window)
-      .andThen((count) => {
-        if (count >= limit) {
-          return err(
-            new DomainError(
-              `リクエストが多すぎます。しばらくお待ちください`,
-              "RATE_LIMIT_EXCEEDED",
-              429
-            )
-          );
-        }
-        return ok(undefined);
-      })
-      .andThen(() => this.incrementActionCount(key, window));
-  }
-
-  // CSRFトークン生成
-  generateCSRFToken(): Result<string, DomainError> {
-    try {
-      const token = crypto.randomBytes(32).toString("hex");
-      return ok(token);
-    } catch (error) {
-      return err(DomainError.internal("CSRFトークンの生成に失敗しました"));
-    }
-  }
-
-  // CSRFトークン検証
-  validateCSRFToken(
-    token: string,
-    sessionToken: string
-  ): Result<void, DomainError> {
-    if (!token || !sessionToken) {
-      return err(DomainError.unauthorized("CSRFトークンが無効です"));
-    }
-
-    // トークンペアの検証ロジック
-    const isValid = this.verifyTokenPair(token, sessionToken);
-    if (!isValid) {
-      return err(DomainError.unauthorized("CSRFトークンが一致しません"));
-    }
+    // 3. カスタムクレーム付与
+    await auth().setCustomUserClaims(uid, { admin: true });
 
     return ok(undefined);
   }
 
-  private getActionCount(
-    key: string,
-    window: number
-  ): ResultAsync<number, DomainError> {
-    // Redis実装例（簡略化）
-    return ResultAsync.fromSafePromise(Promise.resolve(ok(0)));
-  }
-
-  private incrementActionCount(
-    key: string,
-    window: number
-  ): ResultAsync<void, DomainError> {
-    // Redis実装例（簡略化）
-    return ResultAsync.fromSafePromise(Promise.resolve(ok(undefined)));
-  }
-
-  private verifyTokenPair(csrfToken: string, sessionToken: string): boolean {
-    // トークンペアの検証ロジック
-    return true;
+  private verifyPassword(input: string): boolean {
+    // 環境変数のADMIN_PASSWORD_HASHと比較
+    return createHash('sha256').update(input).digest('hex') === process.env.ADMIN_PASSWORD_HASH;
   }
 }
+```
 
-// infrastructure/security/InputSanitizer.ts
-export class InputSanitizer {
-  // XSS対策
-  static sanitizeHtml(input: string): Result<string, DomainError> {
-    try {
-      const sanitized = input
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#x27;")
-        .replace(/\//g, "&#x2F;");
-      return ok(sanitized);
-    } catch (error) {
-      return err(DomainError.internal("入力のサニタイズに失敗しました"));
-    }
-  }
+### クライアントサイドでの管理者判定
 
-  // SQLインジェクション対策
-  static validateSqlInput(input: string): Result<string, DomainError> {
-    if (/[';--]/.test(input)) {
-      return err(
-        DomainError.validation([
-          {
-            field: "input",
-            message: "不正な文字が含まれています",
-            code: "INVALID_CHARACTERS",
-          },
-        ])
-      );
-    }
-    return ok(input);
-  }
-}
+```typescript
+// フック例
+const useAdmin = () => {
+  const { user } = useAuth(); // Firebase Auth hook
+  const [isAdmin, setIsAdmin] = useState(false);
 
-// infrastructure/security/EncryptionService.ts
-export class EncryptionService {
-  private algorithm = "aes-256-gcm";
-  private key: Buffer;
-
-  constructor() {
-    const keyString = process.env.ENCRYPTION_KEY;
-    if (!keyString) {
-      throw new Error("暗号化キーが設定されていません");
-    }
-    this.key = Buffer.from(keyString, "hex");
-  }
-
-  // 個人情報の暗号化
-  encrypt(text: string): Result<EncryptedData, DomainError> {
-    try {
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv(this.algorithm, this.key, iv);
-
-      let encrypted = cipher.update(text, "utf8", "hex");
-      encrypted += cipher.final("hex");
-
-      const authTag = cipher.getAuthTag();
-
-      return ok({
-        encrypted,
-        iv: iv.toString("hex"),
-        authTag: authTag.toString("hex"),
+  useEffect(() => {
+    if (user) {
+      user.getIdTokenResult().then((idTokenResult) => {
+        setIsAdmin(!!idTokenResult.claims.admin);
       });
-    } catch (error) {
-      return err(DomainError.internal("暗号化に失敗しました"));
     }
+  }, [user]);
+
+  return isAdmin;
+};
+```
+
+## セキュリティ対策
+
+### Firestore セキュリティルール
+`specs/10-database-schema.md` 参照。`request.auth.token.admin == true` で管理者権限を判定します。
+
+### Cloud Run ロギング
+アプリケーションのログは標準出力（stdout/stderr）に出力することで、Cloud Loggingに自動的に収集されます。
+
+```typescript
+// utils/logger.ts
+export const logger = {
+  info: (message: string, meta?: any) => {
+    console.log(JSON.stringify({ severity: 'INFO', message, ...meta }));
+  },
+  error: (message: string, error?: any) => {
+    console.error(JSON.stringify({ severity: 'ERROR', message, error: error?.message, stack: error?.stack }));
   }
-
-  // 復号化
-  decrypt(data: EncryptedData): Result<string, DomainError> {
-    try {
-      const decipher = crypto.createDecipheriv(
-        this.algorithm,
-        this.key,
-        Buffer.from(data.iv, "hex")
-      );
-
-      decipher.setAuthTag(Buffer.from(data.authTag, "hex"));
-
-      let decrypted = decipher.update(data.encrypted, "hex", "utf8");
-      decrypted += decipher.final("utf8");
-
-      return ok(decrypted);
-    } catch (error) {
-      return err(DomainError.internal("復号化に失敗しました"));
-    }
-  }
-}
-
-// Types
-export interface SecurityConfig {
-  sessionTimeoutHours: number;
-  rateLimits: { [action: string]: number };
-  encryptionKey?: string;
-}
-
-export interface EncryptedData {
-  encrypted: string;
-  iv: string;
-  authTag: string;
-}
-
-export interface AdminAuthConfig {
-  passwordHash: string;
-  salt: string;
-  sessionSecret: string;
-}
-
-// infrastructure/security/AdminAuthService.ts
-export class AdminAuthService {
-  constructor(private config: AdminAuthConfig) {}
-
-  /**
-   * 管理者ログイン認証
-   * 環境変数のハッシュ値と照合
-   */
-  authenticate(password: string): Result<void, DomainError> {
-    try {
-      // 入力パスワード + ソルト でハッシュ化
-      const hash = crypto
-        .createHash("sha256")
-        .update(password + this.config.salt)
-        .digest("hex");
-
-      // 環境変数のハッシュ値と比較（タイミング攻撃対策のためtimingSafeEqual推奨だが、ハッシュ比較なら文字列比較でも可）
-      if (hash !== this.config.passwordHash) {
-        return err(DomainError.unauthorized("パスワードが正しくありません"));
-      }
-
-      return ok(undefined);
-    } catch (error) {
-      return err(DomainError.internal("認証処理中にエラーが発生しました"));
-    }
-  }
-
-  /**
-   * 管理者セッショントークンの生成
-   * JWTなどを使用してステートレスに管理、またはRedis等で管理
-   */
-  createSession(): Result<string, DomainError> {
-    try {
-      // 簡易実装：ランダムなセッショントークン
-      const token = crypto.randomBytes(32).toString("hex");
-      return ok(token);
-    } catch (error) {
-      return err(DomainError.internal("セッション生成に失敗しました"));
-    }
-  }
-}
+};
 ```

@@ -5,28 +5,33 @@
 ## 管理者認証とルート分離
 
 管理者機能は `/admin` 以下のルートに集約し、一般ユーザー向け機能とは完全に分離します。
-認証には環境変数に保存されたハッシュ化パスワードとソルトを使用します。
+認証にはFirebase Authenticationのカスタムクレームを使用します。
 
 ### 認証フロー
 
 1. 管理者が `/admin/login` にアクセス
 2. パスワードを入力して送信
-3. サーバー側で `sha256(password + salt)` を計算し、環境変数の値と比較
-4. 一致した場合、`admin_session` Cookieを発行
+3. サーバー側（Server Action）でパスワードを検証し、Firebase Admin SDKを使って対象UIDにカスタムクレーム `admin: true` を付与
+4. クライアント側でIDトークンを強制リフレッシュ
 5. `/admin/dashboard` へリダイレクト
 
 ```typescript
-import { ResultAsync, ok, err, combine } from "neverthrow";
+import { ResultAsync, ok, err } from "neverthrow";
 import { AdminAuthService } from "@/src/infrastructure/security/AdminAuthService";
 
 // application/admin/AdminAuthUseCase.ts
 export class AdminAuthUseCase {
   constructor(private adminAuthService: AdminAuthService) {}
 
-  login(password: string): Result<string, DomainError> {
-    return this.adminAuthService
-      .authenticate(password)
-      .andThen(() => this.adminAuthService.createSession());
+  // IDトークンとパスワードを受け取り、検証してカスタムクレームを付与
+  login(idToken: string, password: string): ResultAsync<void, DomainError> {
+    return ResultAsync.fromPromise(
+      this.adminAuthService.loginAdmin(idToken, password),
+      (error) => DomainError.unauthorized("認証に失敗しました")
+    ).andThen((result) => {
+      if (result.isErr()) return err(result.error);
+      return ok(undefined);
+    });
   }
 }
 ```

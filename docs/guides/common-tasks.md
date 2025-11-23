@@ -627,49 +627,37 @@ npx prettier --check "**/*.{ts,tsx}"
 
 ---
 
-## Database Operations
+## Database Operations (Firestore)
 
-### Add Prisma Schema
-
-```prisma
-// src/infrastructure/persistence/prisma/schema.prisma
-model Reservation {
-  id          String   @id @default(cuid())
-  customerId  String
-  tableNumber Int
-  status      String
-  reservedAt  DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  customer Customer @relation(fields: [customerId], references: [id])
-
-  @@index([customerId])
-}
-```
-
-### Generate Migration
+### Local Emulator Setup
 
 ```bash
-npx prisma migrate dev --name add_reservation_table
+# Start Firebase Emulators (Firestore, Auth, Storage)
+firebase emulators:start
 ```
 
-### Apply Migration
+### Access Firestore UI
+
+The Emulator UI is typically available at `http://localhost:4000`. You can view and edit data directly there.
+
+### Deploy Rules and Indexes
 
 ```bash
-npx prisma migrate deploy
+# Deploy Firestore Rules
+firebase deploy --only firestore:rules
+
+# Deploy Indexes
+firebase deploy --only firestore:indexes
 ```
 
-### Generate Prisma Client
+### Export/Import Data (for local dev)
 
 ```bash
-npx prisma generate
-```
+# Export data from emulator
+firebase emulators:export ./emulator-data
 
-### View Database
-
-```bash
-npx prisma studio
+# Start emulator with imported data
+firebase emulators:start --import ./emulator-data
 ```
 
 ---

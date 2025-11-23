@@ -14,11 +14,11 @@ export class OrderController {
   ) {}
 
   async createOrder(req: Request, res: Response): Promise<void> {
-    const sessionToken = req.headers["x-session-token"] as string;
+    const idToken = req.headers["authorization"]?.split("Bearer ")[1];
 
-    // セッション検証とレート制限を組み合わせる
+    // Firebase IDトークン検証とレート制限
     await this.securityMiddleware
-      .validateSession(sessionToken)
+      .validateAuth(idToken)
       .andThen((user) =>
         this.securityMiddleware
           .checkRateLimit(user.id, "create_order")
