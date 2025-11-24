@@ -23,7 +23,12 @@ Firebase Authenticationの匿名認証（Anonymous Auth）を利用して、QR�
 ```typescript
 // hooks/useAnonymousAuth.ts
 import { useEffect, useState } from "react";
-import { getAuth, signInAnonymously, onAuthStateChanged, User } from "firebase/auth";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  User,
+} from "firebase/auth";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
 
 export function useAnonymousAuth() {
@@ -33,7 +38,7 @@ export function useAnonymousAuth() {
 
   useEffect(() => {
     const auth = getAuth();
-    
+
     // 認証状態の監視
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -72,13 +77,16 @@ export function useAnonymousAuth() {
 
 // 注文保存後...
 if (shouldSaveProfile) {
-  await firestore().collection("users").doc(userId).set({
-    department: input.department,
-    name: input.name,
-    gender: input.gender,
-    ageGroup: input.ageGroup,
-    lastAccessedAt: firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
+  await firestore().collection("users").doc(userId).set(
+    {
+      department: input.department,
+      name: input.name,
+      gender: input.gender,
+      ageGroup: input.ageGroup,
+      lastAccessedAt: firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 ```
 

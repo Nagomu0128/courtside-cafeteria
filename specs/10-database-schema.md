@@ -105,16 +105,16 @@ Firestoreの複合インデックス設定（`firestore.indexes.json`）
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ユーザー関数
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
+
     function isAdmin() {
       return request.auth.token.admin == true;
     }
@@ -143,7 +143,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update: if (isOwner(resource.data.userId) && resource.data.status != 'CANCELLED') || isAdmin();
     }
-    
+
     // Counters: 認証済みユーザーのみインクリメント可（トランザクション必須）
     match /counters/{counterId} {
       allow read, write: if isAuthenticated();
@@ -156,12 +156,13 @@ service cloud.firestore {
 
 `/orders` と `/users/{userId}/orders` の二重書き込みについて：
 
-| コレクション | 用途 | データ内容 |
-|-------------|------|-----------|
-| `/orders/{orderId}` | 管理者用（全注文管理） | 完全な注文データ |
+| コレクション                       | 用途                         | データ内容                     |
+| ---------------------------------- | ---------------------------- | ------------------------------ |
+| `/orders/{orderId}`                | 管理者用（全注文管理）       | 完全な注文データ               |
 | `/users/{userId}/orders/{orderId}` | ユーザー用（自分の注文一覧） | 表示用に非正規化した軽量データ |
 
 **書き込みフロー：**
+
 1. 注文作成時、サーバーサイドで両方に書き込む（バッチ書き込み）
 2. `/users/{userId}/orders` は読み取り専用（クライアントからの書き込み禁止）
 3. ステータス更新時も両方を更新
