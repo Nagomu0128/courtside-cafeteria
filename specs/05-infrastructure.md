@@ -1,80 +1,64 @@
-# 6. インフラストラクチャ層の実装例
+# 6. インフラストラクチャ層の実装例 (Firebase)
 
-## 原則：Supabaseクライアントのエラーハンドリングをneverthrowでラップ
+## 原則：Firebase Client SDK を使用し、セキュリティルールで保護
+
+### SDK使用方針
+
+- **Repository実装**: Firebase Client SDK を使用（サーバーサイドでも動作可能）
+- **Admin SDKは使用しない**: セキュリティルールで適切に保護すればClient SDKで十分
+- **Admin SDKが必要な場合**: `specs/07-security.md` 参照（認証の特権操作のみ）
 
 ```typescript
 import { ResultAsync, ok, err } from "neverthrow";
-import { createClient } from "@supabase/supabase-js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+  runTransaction,
+  Timestamp,
+} from "firebase/firestore";
+import { DomainError } from "@/src/domain/errors/DomainError";
 
-// infrastructure/repositories/OrderRepository.ts
-export class OrderRepository implements IOrderRepository {
-  constructor(private supabase: SupabaseClient) {}
+// infrastructure/repositories/FirestoreOrderRepository.ts
+export class FirestoreOrderRepository implements IOrderRepository {
+  private db = getFirestore();
 
   save(order: Order): ResultAsync<Order, DomainError> {
+    const orderRef = doc(this.db, "orders", order.id);
     return ResultAsync.fromPromise(
-      this.supabase
-        .from("orders")
-        .insert({
-          id: order.id,
-          order_number: order.orderNumber,
-          user_id: order.userId,
-          menu_id: order.menuId,
-          department: order.userInfo.department,
-          name: order.userInfo.name,
-          gender: order.userInfo.gender,
-          age_group: order.userInfo.ageGroup,
-          status: order.status,
-          ordered_at: order.orderedAt,
-        })
-        .select()
-        .single(),
+      setDoc(orderRef, {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        menuId: order.menuId,
+        userInfo: order.userInfo,
+        selectedOptions: order.selectedOptions,
+        status: order.status,
+        orderedAt: Timestamp.fromDate(order.orderedAt),
+        modifiedAt: order.modifiedAt
+          ? Timestamp.fromDate(order.modifiedAt)
+          : null,
+        cancelledAt: order.cancelledAt
+          ? Timestamp.fromDate(order.cancelledAt)
+          : null,
+      }),
       (error) => this.handleError(error)
-    ).andThen((result) => {
-      if (result.error) {
-        return err(this.handleError(result.error));
-      }
-
-      // 選択されたオプションの保存
-      const optionPromises = order.selectedOptions.map((option) =>
-        this.supabase.from("order_options").insert({
-          order_id: order.id,
-          option_group_id: option.optionGroupId,
-          selected_value: Array.isArray(option.selectedValue)
-            ? option.selectedValue.join(",")
-            : option.selectedValue,
-        })
-      );
-
-      return ResultAsync.fromPromise(Promise.all(optionPromises), (error) =>
-        this.handleError(error)
-      ).map(() => this.toDomainOrder(result.data));
-    });
+    ).map(() => order);
   }
 
-  findByOrderNumber(
-    orderNumber: string
-  ): ResultAsync<Order | null, DomainError> {
-    return ResultAsync.fromPromise(
-      this.supabase
-        .from("orders")
-        .select(
-          `
-          *,
-          order_options (*)
-        `
-        )
-        .eq("order_number", orderNumber)
-        .single(),
-      (error) => this.handleError(error)
-    ).andThen((result) => {
-      if (result.error) {
-        if (result.error.code === "PGRST116") {
-          // データが見つからない場合
-          return ok(null);
-        }
-        return err(this.handleError(result.error));
-      }
-      return ok(result.data ? this.toDomainOrder(result.data) : null);
+  findById(id: string): ResultAsync<Order | null, DomainError> {
+    const orderRef = doc(this.db, "orders", id);
+    return ResultAsync.fromPromise(getDoc(orderRef), (error) =>
+      this.handleError(error)
+    ).map((docSnap) => {
+      if (!docSnap.exists()) return null;
+      return this.toDomainOrder(docSnap.data());
     });
   }
 
@@ -82,86 +66,81 @@ export class OrderRepository implements IOrderRepository {
     userId: string,
     menuId: string
   ): ResultAsync<Order | null, DomainError> {
-    return ResultAsync.fromPromise(
-      this.supabase
-        .from("orders")
-        .select(
-          `
-          *,
-          order_options (*)
-        `
-        )
-        .eq("user_id", userId)
-        .eq("menu_id", menuId)
-        .neq("status", "CANCELLED")
-        .single(),
-      (error) => this.handleError(error)
-    ).andThen((result) => {
-      if (result.error) {
-        if (result.error.code === "PGRST116") {
-          return ok(null);
-        }
-        return err(this.handleError(result.error));
-      }
-      return ok(result.data ? this.toDomainOrder(result.data) : null);
+    const ordersRef = collection(this.db, "orders");
+    const q = query(
+      ordersRef,
+      where("userId", "==", userId),
+      where("menuId", "==", menuId),
+      where("status", "!=", "CANCELLED"),
+      limit(1)
+    );
+    return ResultAsync.fromPromise(getDocs(q), (error) =>
+      this.handleError(error)
+    ).map((snapshot) => {
+      if (snapshot.empty) return null;
+      return this.toDomainOrder(snapshot.docs[0].data());
     });
   }
 
+  // トランザクションを使用したシーケンス採番
   getNextSequence(date: Date): ResultAsync<number, DomainError> {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const dateStr = format(date, "yyyyMMdd");
+    const counterRef = doc(this.db, "counters", `orderSequence_${dateStr}`);
 
     return ResultAsync.fromPromise(
-      this.supabase.rpc("get_next_order_sequence", { order_date: dateStr }),
+      runTransaction(this.db, async (transaction) => {
+        const docSnap = await transaction.get(counterRef);
+        let newCount = 1;
+        if (docSnap.exists()) {
+          newCount = docSnap.data()!.current + 1;
+        }
+        transaction.set(counterRef, { current: newCount }, { merge: true });
+        return newCount;
+      }),
       (error) => this.handleError(error)
-    ).andThen((result) => {
-      if (result.error) {
-        return err(this.handleError(result.error));
-      }
-      return ok(result.data as number);
-    });
-  }
-
-  // ヘルパーメソッド
-  private handleError(error: any): DomainError {
-    console.error("Repository error:", error);
-
-    // Supabaseのエラーコードに基づいてDomainErrorに変換
-    if (error?.code === "23505") {
-      return DomainError.duplicateOrder();
-    }
-    if (error?.code === "23503") {
-      return DomainError.menuNotFound();
-    }
-
-    return DomainError.internal(
-      error?.message || "データベースエラーが発生しました"
     );
   }
 
-  private toDomainOrder(data: any): Order {
+  private handleError(error: unknown): DomainError {
+    console.error("Firestore Error:", error);
+    return DomainError.internal("データベースエラーが発生しました");
+  }
+
+  private toDomainOrder(data: Record<string, unknown>): Order {
     return {
-      id: data.id,
-      userId: data.user_id,
-      menuId: data.menu_id,
-      orderNumber: data.order_number,
-      userInfo: {
-        department: data.department,
-        name: data.name,
-        gender: data.gender as Gender,
-        ageGroup: data.age_group as AgeGroup,
-      },
-      selectedOptions:
-        data.order_options?.map((opt: any) => ({
-          optionGroupId: opt.option_group_id,
-          selectedValue: opt.selected_value.includes(",")
-            ? opt.selected_value.split(",")
-            : opt.selected_value,
-        })) || [],
+      id: data.id as string,
+      userId: data.userId as string,
+      menuId: data.menuId as string,
+      orderNumber: data.orderNumber as string,
+      userInfo: data.userInfo as OrderUserInfo,
+      selectedOptions: (data.selectedOptions as SelectedOption[]) || [],
       status: data.status as OrderStatus,
-      orderedAt: new Date(data.ordered_at),
-      modifiedAt: data.modified_at ? new Date(data.modified_at) : undefined,
-      cancelledAt: data.cancelled_at ? new Date(data.cancelled_at) : undefined,
+      orderedAt: (data.orderedAt as Timestamp).toDate(),
+      modifiedAt: (data.modifiedAt as Timestamp | null)?.toDate(),
+      cancelledAt: (data.cancelledAt as Timestamp | null)?.toDate(),
     };
+  }
+}
+```
+
+### Firebase Storage (画像保存)
+
+```typescript
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+export class FirebaseStorageService {
+  private storage = getStorage();
+
+  async uploadMenuImage(file: Blob, fileName: string): Promise<string> {
+    const storageRef = ref(this.storage, `menus/${fileName}`);
+
+    await uploadBytes(storageRef, file, {
+      contentType: "image/jpeg",
+    });
+
+    // ダウンロードURLを取得（セキュリティルールで保護）
+    const url = await getDownloadURL(storageRef);
+    return url;
   }
 }
 ```

@@ -51,8 +51,7 @@ This guide provides Next.js 16 component patterns for the Cafeteria Management S
 // app/(dashboard)/orders/page.tsx
 import type { Metadata } from 'next';
 import { GetAllOrdersUseCase } from '@/src/application/cafeteria/use-cases/orders/GetAllOrdersUseCase';
-import { PrismaOrderRepository } from '@/src/infrastructure/persistence/prisma/repositories/PrismaOrderRepository';
-import { prisma } from '@/src/infrastructure/persistence/prisma/client';
+import { FirestoreOrderRepository } from '@/src/infrastructure/persistence/firestore/repositories/FirestoreOrderRepository';
 import { OrderList } from '@/app/components/features/orders/OrderList';
 
 export const metadata: Metadata = {
@@ -62,7 +61,8 @@ export const metadata: Metadata = {
 
 export default async function OrdersPage() {
   // Data fetching in Server Component
-  const orderRepository = new PrismaOrderRepository(prisma);
+  // Note: Ensure firebase-admin is initialized
+  const orderRepository = new FirestoreOrderRepository();
   const useCase = new GetAllOrdersUseCase(orderRepository);
   const orders = await useCase.execute();
 

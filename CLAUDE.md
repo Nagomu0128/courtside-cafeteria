@@ -189,6 +189,14 @@ cafeteria-mg/
 - ✅ Explicit return types
 - ❌ NO `any` type (use `unknown` if needed)
 
+### File Size Guidelines
+
+- ✅ **70-80% of files**: 100行以内に収める
+- ✅ **97% of files**: 200行以内に収める
+- ❌ 200行を超えるファイルは原則禁止（分割を検討）
+
+ファイルが大きくなりすぎる場合は、責務を分割してください。
+
 ### React
 
 - ✅ **All Frontend UI must be written in React** (React 19.2.0)

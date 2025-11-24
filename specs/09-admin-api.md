@@ -5,60 +5,65 @@
 ## 管理者認証とルート分離
 
 管理者機能は `/admin` 以下のルートに集約し、一般ユーザー向け機能とは完全に分離します。
-認証には環境変数に保存されたハッシュ化パスワードとソルトを使用します。
+認証にはFirebase Authenticationのカスタムクレームを使用します。
 
 ### 認証フロー
 
 1. 管理者が `/admin/login` にアクセス
 2. パスワードを入力して送信
-3. サーバー側で `sha256(password + salt)` を計算し、環境変数の値と比較
-4. 一致した場合、`admin_session` Cookieを発行
+3. サーバー側（Server Action）でパスワードを検証し、Firebase Admin SDKを使って対象UIDにカスタムクレーム `admin: true` を付与
+4. クライアント側でIDトークンを強制リフレッシュ
 5. `/admin/dashboard` へリダイレクト
 
 ```typescript
-import { ResultAsync, ok, err, combine } from "neverthrow";
+import { ResultAsync, ok, err } from "neverthrow";
 import { AdminAuthService } from "@/src/infrastructure/security/AdminAuthService";
 
 // application/admin/AdminAuthUseCase.ts
 export class AdminAuthUseCase {
   constructor(private adminAuthService: AdminAuthService) {}
 
-  login(password: string): Result<string, DomainError> {
-    return this.adminAuthService
-      .authenticate(password)
-      .andThen(() => this.adminAuthService.createSession());
+  // IDトークンとパスワードを受け取り、検証してカスタムクレームを付与
+  login(idToken: string, password: string): ResultAsync<void, DomainError> {
+    return ResultAsync.fromPromise(
+      this.adminAuthService.loginAdmin(idToken, password),
+      (error) => DomainError.unauthorized("認証に失敗しました")
+    ).andThen((result) => {
+      if (result.isErr()) return err(result.error);
+      return ok(undefined);
+    });
   }
 }
 ```
 
 // application/admin/AdminOrderService.ts
 export class AdminOrderService {
-  constructor(
-    private orderRepository: IOrderRepository,
-    private menuRepository: IMenuRepository,
-    private exportService: IExportService
-  ) {}
+constructor(
+private orderRepository: IOrderRepository,
+private menuRepository: IMenuRepository,
+private exportService: IExportService
+) {}
 
-  // 注文集計
-  getOrderSummary(
-    input: OrderSummaryInput
-  ): ResultAsync<OrderSummaryOutput, DomainError> {
-    return this.menuRepository
-      .findById(input.menuId)
-      .andThen((menu) => {
-        if (!menu) {
-          return err(DomainError.menuNotFound());
-        }
-        return ok(menu);
-      })
-      .andThen((menu) =>
-        this.orderRepository
-          .countByMenuIdAndOptions(input.menuId, input.filters)
-          .map((counts) => ({ menu, counts }))
-      )
-      .map(({ menu, counts }) => {
-        // 集計処理
-        const totalOrders = counts.reduce((sum, c) => sum + c.count, 0);
+// 注文集計
+getOrderSummary(
+input: OrderSummaryInput
+): ResultAsync<OrderSummaryOutput, DomainError> {
+return this.menuRepository
+.findById(input.menuId)
+.andThen((menu) => {
+if (!menu) {
+return err(DomainError.menuNotFound());
+}
+return ok(menu);
+})
+.andThen((menu) =>
+this.orderRepository
+.countByMenuIdAndOptions(input.menuId, input.filters)
+.map((counts) => ({ menu, counts }))
+)
+.map(({ menu, counts }) => {
+// 集計処理
+const totalOrders = counts.reduce((sum, c) => sum + c.count, 0);
 
         const byDepartment = this.groupBy(counts, "department");
         const byGender = this.groupBy(counts, "gender");
@@ -79,19 +84,20 @@ export class AdminOrderService {
           generatedAt: new Date(),
         };
       });
-  }
 
-  // CSVエクスポート
-  exportOrders(
-    input: ExportOrdersInput
-  ): ResultAsync<ExportResult, DomainError> {
-    return ResultAsync.combine([
-      this.menuRepository.findById(input.menuId),
-      this.orderRepository.findByMenuId(input.menuId),
-    ]).andThen(([menu, orders]) => {
-      if (!menu) {
-        return err(DomainError.menuNotFound());
-      }
+}
+
+// CSVエクスポート
+exportOrders(
+input: ExportOrdersInput
+): ResultAsync<ExportResult, DomainError> {
+return ResultAsync.combine([
+this.menuRepository.findById(input.menuId),
+this.orderRepository.findByMenuId(input.menuId),
+]).andThen(([menu, orders]) => {
+if (!menu) {
+return err(DomainError.menuNotFound());
+}
 
       const data = orders.map((order) => ({
         注文番号: order.orderNumber,
@@ -130,17 +136,18 @@ export class AdminOrderService {
         buffer,
       }));
     });
-  }
 
-  // メニュー管理
-  createMenu(input: CreateMenuInput): ResultAsync<Menu, DomainError> {
-    // バリデーション
-    const validationResult = MenuValidator.validateCreateMenu(input);
-    if (validationResult.isErr()) {
-      return ResultAsync.fromSafePromise(
-        Promise.resolve(err(validationResult.error))
-      );
-    }
+}
+
+// メニュー管理
+createMenu(input: CreateMenuInput): ResultAsync<Menu, DomainError> {
+// バリデーション
+const validationResult = MenuValidator.validateCreateMenu(input);
+if (validationResult.isErr()) {
+return ResultAsync.fromSafePromise(
+Promise.resolve(err(validationResult.error))
+);
+}
 
     // 価格の値オブジェクト作成
     const priceResult = Money.create(input.price);
@@ -173,18 +180,19 @@ export class AdminOrderService {
       }
       return ok(savedMenu);
     });
-  }
 
-  updateMenuStatus(
-    menuId: string,
-    status: MenuStatus
-  ): ResultAsync<Menu, DomainError> {
-    return this.menuRepository
-      .findById(menuId)
-      .andThen((menu) => {
-        if (!menu) {
-          return err(DomainError.menuNotFound());
-        }
+}
+
+updateMenuStatus(
+menuId: string,
+status: MenuStatus
+): ResultAsync<Menu, DomainError> {
+return this.menuRepository
+.findById(menuId)
+.andThen((menu) => {
+if (!menu) {
+return err(DomainError.menuNotFound());
+}
 
         // ステータス変更のビジネスルール
         if (menu.status === MenuStatus.CANCELLED) {
@@ -211,18 +219,19 @@ export class AdminOrderService {
         return ok(menu);
       })
       .andThen((menu) => this.menuRepository.update(menu));
-  }
 
-  // ヘルパーメソッド
-  private groupBy(data: any[], key: string): GroupedSummary[] {
-    const grouped = data.reduce((acc, item) => {
-      const value = item.metadata?.[key];
-      if (value) {
-        if (!acc[value]) acc[value] = 0;
-        acc[value] += item.count;
-      }
-      return acc;
-    }, {});
+}
+
+// ヘルパーメソッド
+private groupBy(data: any[], key: string): GroupedSummary[] {
+const grouped = data.reduce((acc, item) => {
+const value = item.metadata?.[key];
+if (value) {
+if (!acc[value]) acc[value] = 0;
+acc[value] += item.count;
+}
+return acc;
+}, {});
 
     const total = Object.values(grouped).reduce(
       (sum: number, count: any) => sum + count,
@@ -234,10 +243,11 @@ export class AdminOrderService {
       count: count as number,
       percentage: total > 0 ? ((count as number) / total) * 100 : 0,
     }));
-  }
 
-  private groupByOptions(data: OptionCount[]): OptionGroupSummary[] {
-    const grouped = new Map<string, Map<string, number>>();
+}
+
+private groupByOptions(data: OptionCount[]): OptionGroupSummary[] {
+const grouped = new Map<string, Map<string, number>>();
 
     for (const item of data) {
       if (!grouped.has(item.optionGroupId)) {
@@ -254,55 +264,59 @@ export class AdminOrderService {
         count,
       })),
     }));
-  }
 
-  private flattenOptions(options: SelectedOption[]): any {
-    const flattened: any = {};
-    for (const option of options) {
-      const value = Array.isArray(option.selectedValue)
-        ? option.selectedValue.join(", ")
-        : option.selectedValue;
-      flattened[`オプション_${option.optionGroupId}`] = value;
-    }
-    return flattened;
-  }
-
-  private translateGender(gender: Gender): string {
-    const translations = {
-      [Gender.MALE]: "男性",
-      [Gender.FEMALE]: "女性",
-      [Gender.OTHER]: "その他",
-    };
-    return translations[gender] || gender;
-  }
-
-  private translateAgeGroup(ageGroup: AgeGroup): string {
-    const translations = {
-      [AgeGroup.UNDER_20]: "20歳未満",
-      [AgeGroup.TWENTIES]: "20代",
-      [AgeGroup.THIRTIES]: "30代",
-      [AgeGroup.FORTIES]: "40代",
-      [AgeGroup.FIFTIES]: "50代",
-      [AgeGroup.OVER_60]: "60歳以上",
-    };
-    return translations[ageGroup] || ageGroup;
-  }
-
-  private translateStatus(status: OrderStatus): string {
-    const translations = {
-      [OrderStatus.CONFIRMED]: "確定",
-      [OrderStatus.MODIFIED]: "変更済",
-      [OrderStatus.CANCELLED]: "キャンセル",
-    };
-    return translations[status] || status;
-  }
-
-  private setupMenuOptions(
-    menuId: string,
-    options: any[]
-  ): ResultAsync<void, DomainError> {
-    // オプション設定の実装
-    return ResultAsync.fromSafePromise(Promise.resolve(ok(undefined)));
-  }
 }
+
+private flattenOptions(options: SelectedOption[]): any {
+const flattened: any = {};
+for (const option of options) {
+const value = Array.isArray(option.selectedValue)
+? option.selectedValue.join(", ")
+: option.selectedValue;
+flattened[`オプション_${option.optionGroupId}`] = value;
+}
+return flattened;
+}
+
+private translateGender(gender: Gender): string {
+const translations = {
+[Gender.MALE]: "男性",
+[Gender.FEMALE]: "女性",
+[Gender.OTHER]: "その他",
+};
+return translations[gender] || gender;
+}
+
+private translateAgeGroup(ageGroup: AgeGroup): string {
+const translations = {
+[AgeGroup.UNDER_20]: "20歳未満",
+[AgeGroup.TWENTIES]: "20代",
+[AgeGroup.THIRTIES]: "30代",
+[AgeGroup.FORTIES]: "40代",
+[AgeGroup.FIFTIES]: "50代",
+[AgeGroup.OVER_60]: "60歳以上",
+};
+return translations[ageGroup] || ageGroup;
+}
+
+private translateStatus(status: OrderStatus): string {
+const translations = {
+[OrderStatus.CONFIRMED]: "確定",
+[OrderStatus.MODIFIED]: "変更済",
+[OrderStatus.CANCELLED]: "キャンセル",
+};
+return translations[status] || status;
+}
+
+private setupMenuOptions(
+menuId: string,
+options: any[]
+): ResultAsync<void, DomainError> {
+// オプション設定の実装
+return ResultAsync.fromSafePromise(Promise.resolve(ok(undefined)));
+}
+}
+
+```
+
 ```

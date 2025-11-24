@@ -12,14 +12,11 @@
 // レイヤー構成
 ├── Domain Layer        // ビジネスロジック・エンティティ
 ├── Application Layer   // ユースケース・サービス
-├── Infrastructure Layer // DB・外部サービス実装
-├── Domain Layer        // ビジネスロジック・エンティティ
-├── Application Layer   // ユースケース・サービス
-├── Infrastructure Layer // DB・外部サービス実装
+├── Infrastructure Layer // Firestore・Firebase Auth・外部サービス実装
 └── Presentation Layer  // UI・コントローラー
     ├── (public)        // 一般ユーザー用（匿名認証）
     └── (auth)          // 認証ルートグループ
-        └── admin       // 管理者用（パスワード認証）
+        └── admin       // 管理者用（カスタムクレーム認証）
 ```
 
 ## 依存パッケージ
@@ -28,7 +25,8 @@
 {
   "dependencies": {
     "neverthrow": "^6.0.0",
-    "@supabase/supabase-js": "^2.39.0",
+    "firebase": "^10.0.0",
+    "firebase-admin": "^12.0.0",
     "date-fns": "^3.0.0",
     "zod": "^3.22.0"
   }
